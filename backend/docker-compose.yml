@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+    pontocapi:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: development
+        container_name: pontocapi
+        command: php artisan octane:start --watch --port=9000 --host=0.0.0.0
+        restart: unless-stopped
+        tty: true
+        volumes:
+            - ./:/var/www
+        networks:
+            - pontoc
+        depends_on:
+            - pgsql
+            - redis
+    pgsql:
+        image: "postgis/postgis:15-3.3"
+        container_name: pgsql
+        ports:
+            - "${DB_PORT:-5432}:5432"
+        environment:
+            PGPASSWORD: "${DB_PASSWORD}"
+            POSTGRES_DB: "${DB_DATABASE}"
+            POSTGRES_USER: "${DB_USERNAME}"
+            POSTGRES_PASSWORD: "${DB_PASSWORD}"
+        volumes:
+            - pontocpgsql:/var/lib/postgresql/data
+        networks:
+            - pontoc
+
+    redis:
+        image: "redis:alpine"
+        container_name: redis
+        ports:
+            - "${REDIS_PORT:-6379}:6379"
+        volumes:
+            - "pontocredis:/data"
+        networks:
+            - pontoc
+
+    pgadmin:
+        image: dpage/pgadmin4:4
+        container_name: pgadmin
+        environment:
+            PGADMIN_DEFAULT_EMAIL: "${PGADMIN_DEFAULT_EMAIL}"
+            PGADMIN_DEFAULT_PASSWORD: "${PGADMIN_DEFAULT_PASSWORD}"
+        ports:
+            - "5433:80"
+        depends_on:
+            - pgsql
+        networks:
+            - pontoc
+
+    nginx:
+        image: nginx:alpine
+        container_name: nginx
+        restart: unless-stopped
+        depends_on:
+            - pontocapi
+        ports:
+            - 8000:80
+        volumes:
+            - ./docker/nginx:/etc/nginx/conf.d/
+        networks:
+            - pontoc
+
+networks:
+    pontoc:
+        driver: bridge
+
+volumes:
+    pontocpgsql:
+        driver: local
+    pontocredis:
+        driver: local
