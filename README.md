@@ -1,6 +1,6 @@
-# CPonto (ponto-c-sistema)
+# Black Butter
 
-Projeto de sistema de relatório de ponto 
+Projeto de transversal de sistema de retalos e métricas sobre poluição em Manaus - AM
 
 ## Install the dependencies
 ```bash
