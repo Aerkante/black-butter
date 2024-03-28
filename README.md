@@ -37,6 +37,35 @@ npm run format
 quasar build
 ```
 
+
+## To build Laravel
+
+### Nav to backend
+```bash
+cd backend/
+```
+
+## Install the dependencies
+```bash
+composer install
+# or
+composer update
+```
+
+## Initiate docker container
+```bash
+docker-compose up
+```
+
+## Prepare DB
+```bash
+php artisan migrate:fresh --seed
+```
+
+## Start php dev server
+```bash
+php artisan serve
+```
+
 ### Customize the configuration
 See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
-# black-butter
