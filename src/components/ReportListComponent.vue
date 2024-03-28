@@ -16,8 +16,11 @@
 
       <template v-slot:body-cell-actions="props">
         <q-td :props="props">
-          <q-btn color="negative" dense
-                 icon="las la-trash" @click="deleteModal = {open: true, id: props.row.id, name: props.row.name}"/>
+          <q-btn class="q-mx-sm" color="primary"
+                 dense icon="las la-edit" @click=" bus.emit('edit-report-record', props.row)"/>
+          <q-btn class="q-mx-sm" color="negative"
+                 dense icon="las la-trash"
+                 @click="deleteModal = {open: true, id: props.row.id, name: props.row.name}"/>
         </q-td>
       </template>
       <template v-slot:body-cell-pollution="props">

@@ -1,5 +1,4 @@
 <template>
-
   <q-card>
     <q-form ref="qform" @reset="form.data = {...defaultData}" @submit.stop.prevent="save">
       <q-card-section>
@@ -41,9 +40,9 @@ import DistrictSelectorComponent from 'components/DistrictSelectorComponent.vue'
 import IndexSliderComponent from 'components/IndexSliderComponent.vue';
 import {useReportStore} from 'src/stores';
 import {useNotifier} from 'src/utils';
-import {QForm} from 'quasar';
+import {EventBus, QForm} from 'quasar';
 
-const bus = inject('bus')
+const bus = inject('bus') as EventBus
 const defaultData = {air_pollution_index: 1, sound_pollution_index: 1, water_pollution_index: 1} as Report
 const store = useReportStore()
 const notifier = useNotifier()
@@ -80,6 +79,10 @@ const save = async () => {
     store.loading = false
   }
 }
+
+bus.on('edit-report-record', (record: Report) => {
+  form.data = {...record}
+})
 </script>
 <style lang="scss">
 </style>

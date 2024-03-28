@@ -1,8 +1,8 @@
 {
   "name": "black-butter",
   "version": "0.0.1",
-  "description": "Projeto Black Butter ",
-  "productName": "Black Butter",
+  "description": "Projeto Fametrics",
+  "productName": "Fametrics",
   "author": "Aerkante <aerkante@gmail.com>",
   "private": true,
   "scripts": {
