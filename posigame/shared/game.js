@@ -12,104 +12,112 @@ const wallH = (x, y, len) => ({ x, y: y - T / 2, w: len, h: T }); // divisória 
 const wallV = (x, y, len) => ({ x: x - T / 2, y, w: T, h: len }); // divisória ao longo de y
 
 const ROOMS = [
-  { id: 'reuniao', name: 'REUNIÃO', x: 0, y: 0, w: 12, h: 6, floor: 'wood', plate: '#3B4DC4' },
-  { id: 'diretor', name: 'DIRETOR', x: 12, y: 0, w: 8, h: 6, floor: 'porcelain', plate: '#7A3BC4' },
-  { id: 'componentes', name: 'COMPONENTES', x: 0, y: 12, w: 9, h: 6, floor: 'porcelain', plate: '#8A93A8' },
-  { id: 'seguranca', name: 'SEGURANÇA', x: 0, y: 18, w: 9, h: 6, floor: 'porcelain', plate: '#1FB86A' },
-  { id: 'copa', name: 'COPA', x: 0, y: 24, w: 12, h: 8, floor: 'porcelain', plate: '#FF8A1F' },
+  { id: 'reuniao', name: 'REUNIÃO', x: 0, y: 0, w: 13, h: 7, floor: 'wood', plate: '#3B4DC4' },
+  { id: 'diretor', name: 'DIRETOR', x: 13, y: 0, w: 9, h: 7, floor: 'porcelain', plate: '#7A3BC4' },
+  { id: 'componentes', name: 'COMPONENTES', x: 0, y: 21, w: 11, h: 7, floor: 'porcelain', plate: '#8A93A8' },
+  { id: 'seguranca', name: 'SEGURANÇA', x: 0, y: 28, w: 11, h: 6, floor: 'porcelain', plate: '#1FB86A' },
+  { id: 'copa', name: 'COPA', x: 0, y: 34, w: 14, h: 10, floor: 'porcelain', plate: '#FF8A1F' },
 ];
 
 const WALLS = [
-  // reunião e diretor (porta da reunião em x 5..7, do diretor em x 15..17)
-  wallH(0, 6, 5), wallH(7, 6, 5), wallH(12, 6, 3), wallH(17, 6, 3), wallV(12, 0, 6), wallV(20, 0, 6),
-  // componentes (porta em y 14.5..16.5) e segurança (porta em y 20.5..22.5)
-  wallH(0, 12, 9), wallV(9, 12, 2.5), wallV(9, 16.5, 1.5), wallH(0, 18, 9), wallV(9, 18, 2.5), wallV(9, 22.5, 1.5),
-  // copa (portas: topo em x 9.5..11.5 e lado em y 27..29.5)
-  wallH(0, 24, 9.5), wallH(11.5, 24, 0.5), wallV(12, 24, 3), wallV(12, 29.5, 2.5),
+  // reunião (porta em x 5.5..7.5) e diretor (porta em x 16..18)
+  wallH(0, 7, 5.5), wallH(7.5, 7, 5.5), wallH(13, 7, 3), wallH(18, 7, 4), wallV(13, 0, 7), wallV(22, 0, 7),
+  // componentes (porta em y 23.5..25.5) e segurança (porta em y 30.5..32.5)
+  wallH(0, 21, 11), wallV(11, 21, 2.5), wallV(11, 25.5, 2.5), wallH(0, 28, 11), wallV(11, 28, 2.5), wallV(11, 32.5, 1.5),
+  // copa (portas: topo em x 11.5..13.5 e lado em y 37.5..40)
+  wallH(0, 34, 11.5), wallH(13.5, 34, 0.5), wallV(14, 34, 3.5), wallV(14, 40, 4),
+  // paredinha do ponto eletrônico, no canto de baixo à direita
+  wallH(29, 30.5, 7),
 ];
 
-// Móveis. solid = bloqueia a passagem (w/h = pegada no chão).
 // Setores da empresa (cada mesa do salão pertence a um deles)
 export const SECTORS = {
-  secretaria: { name: 'Secretária executiva', short: 'SECRETARIA', color: '#B18CFF', where: 'perto da sala do diretor' },
-  fiscal: { name: 'Fiscal', short: 'FISCAL', color: '#2BC8FF', where: 'baia do canto esquerdo, fileira de cima' },
-  sesmt: { name: 'SESMT', short: 'SESMT', color: '#3DFF8B', where: 'baia ao lado da de Fiscal' },
-  cadastro: { name: 'Cadastro', short: 'CADASTRO', color: '#7FE3FF', where: 'baia ao lado da de SESMT, em frente à porta do diretor' },
-  projetos: { name: 'Projetos', short: 'PROJETOS', color: '#FF8A1F', where: 'logo abaixo da secretária' },
+  secretaria: { name: 'Secretária executiva', short: 'SECRETARIA', color: '#B18CFF', where: 'do lado de fora da sala do diretor' },
+  fiscal: { name: 'Fiscal', short: 'FISCAL', color: '#2BC8FF', where: 'as duas baias de cima, à esquerda' },
+  sesmt: { name: 'SESMT', short: 'SESMT', color: '#3DFF8B', where: 'as duas baias logo abaixo das de Fiscal' },
+  cadastro: { name: 'Cadastro', short: 'CADASTRO', color: '#7FE3FF', where: 'baia larga em frente à porta do diretor' },
+  projetos: { name: 'Projetos', short: 'PROJETOS', color: '#FF8A1F', where: 'coluna da direita, primeira baia' },
   desenvolvimento: { name: 'Desenvolvimento', short: 'DESENV.', color: '#FFD426', where: 'abaixo de Projetos' },
-  financeiro: { name: 'Financeiro', short: 'FINANCEIRO', color: '#FF4FA3', where: 'no fim da coluna, perto da copa e do ponto' },
+  financeiro: { name: 'Financeiro', short: 'FINANCEIRO', color: '#FF4FA3', where: 'fim da coluna, perto do ponto eletrônico' },
 };
 
-// Baias em "+": cada uma tem 4 lugares (um em cada canto do "+"). A mesa da secretária é a única individual.
-const BAIA = 3.8; // lado do "+" (braços de 1 tile; cada canto tem 1,4 tile livre para a cadeira)
+// Baias em "+": 4 lugares (um em cada canto do "+"), com divisórias no meio. Tamanho [largura, altura].
 const BAIAS = [
-  [0.6, 8, 'fiscal'], [6.2, 8, 'sesmt'], [12.4, 8, 'cadastro'],
-  [18, 11, 'projetos'], [18, 16, 'desenvolvimento'], [18, 21, 'financeiro'],
+  [1.5, 9.6, 3.8, 3.8, 'fiscal'], [7.5, 9.6, 3.8, 3.8, 'fiscal'],
+  [1.5, 14.8, 3.8, 3.8, 'sesmt'], [7.5, 14.8, 3.8, 3.8, 'sesmt'],
+  [14.4, 10.6, 8.6, 3.8, 'cadastro'],
+  [27, 9.5, 3.8, 3.8, 'projetos'], [27, 15.7, 3.8, 3.8, 'desenvolvimento'], [27, 21.9, 3.8, 3.8, 'financeiro'],
 ];
 const solid = (t, x, y, w, h, extra = {}) => ({ t, x, y, w, h, solid: true, ...extra });
 const deco = (t, x, y) => ({ t, x, y, solid: false });
-const baia = (x, y, sector) => {
-  const a = (BAIA - 1) / 2;
+const baia = (x, y, w, h, sector) => {
+  const ax = (w - 1) / 2;
+  const ay = (h - 1) / 2;
+  const cx = ax / 2;
+  const cy = ay / 2;
   return [
-    solid('baia', x, y, BAIA, BAIA, { sector, rects: [{ x: x + a, y, w: 1, h: BAIA }, { x, y: y + a, w: BAIA, h: 1 }] }),
-    ...[[0.7, 0.7], [BAIA - 0.7, 0.7], [0.7, BAIA - 0.7], [BAIA - 0.7, BAIA - 0.7]].map(([dx, dy]) => deco('chair', x + dx, y + dy)),
+    solid('baia', x, y, w, h, { sector, rects: [{ x: x + ax, y, w: 1, h }, { x, y: y + ay, w, h: 1 }] }),
+    ...[[cx, cy], [w - cx, cy], [cx, h - cy], [w - cx, h - cy]].map(([dx, dy]) => deco('chair', x + dx, y + dy)),
   ];
 };
 
+// Canto secreto da sala de componentes: atacar aqui faz o personagem deitar e dormir
+export const EGG = { x: 0.3, y: 25.6, w: 2.4, h: 2.1 };
+
 const PROPS = [
   // salão
-  ...BAIAS.flatMap(([x, y, sector]) => baia(x, y, sector)),
-  solid('desk', 19.4, 8.6, 2, 1, { sector: 'secretaria' }), deco('chair', 20.4, 10.35),
-    deco('plant', 0.7, 6.7), deco('plant', 9.5, 6.6), deco('plant', 23.3, 6.5), deco('plant', 23.3, 31), deco('plant', 10.2, 30.8), deco('plant', 12.7, 13), deco('plant', 12.7, 30.6),
-  deco('bin', 17, 10.3), deco('bin', 22.8, 16.2), deco('bin', 12.6, 20.5),
-  solid('cooler', 22.6, 7.4, 0.9, 0.9),
+  ...BAIAS.flatMap(([x, y, w, h, sector]) => baia(x, y, w, h, sector)),
+  solid('desk', 23.2, 2.8, 2, 1, { sector: 'secretaria' }), deco('chair', 24.2, 4.55),
+  solid('printer', 12.8, 15, 1, 1), solid('cooler', 12.8, 17.4, 0.9, 0.9), solid('cooler', 24.6, 9, 0.9, 0.9),
+  deco('plant', 0.8, 7.9), deco('plant', 11.8, 8), deco('plant', 24.5, 12.6), deco('plant', 35.2, 7.5), deco('plant', 35.2, 43), deco('plant', 15.2, 43), deco('plant', 12.2, 20), deco('plant', 12.4, 33),
+  deco('bin', 6.4, 14.1), deco('bin', 25.2, 15.4), deco('bin', 25.2, 21.5), deco('bin', 14.5, 19.5),
   // sala de reunião
-  solid('table6', 3, 1.8, 6, 2),
-  ...[4, 5.4, 6.8, 8.2].flatMap((x) => [deco('chair', x, 1.3), deco('chair', x, 4.5)]),
-  deco('chair', 2.2, 2.8), deco('chair', 9.8, 2.8),
-  deco('plant', 0.8, 5.2), deco('plant', 11.2, 5.2),
+  solid('table6', 3.5, 2.5, 6, 2),
+  ...[4.5, 5.9, 7.3, 8.7].flatMap((x) => [deco('chair', x, 1.9), deco('chair', x, 5.1)]),
+  deco('chair', 2.7, 3.5), deco('chair', 10.3, 3.5),
+  deco('plant', 0.8, 6.2), deco('plant', 12.2, 6.2),
   // sala do diretor (simples: uma mesa, duas cadeiras e uma planta)
-  solid('bigdesk', 14.4, 1.6, 3.2, 1.3), deco('chair', 16, 0.95), deco('chair', 16, 3.6),
-  deco('plant', 12.9, 5.2),
-  // sala de componentes: três mesas em U com componentes, mesa redonda com 3 cadeiras, lixeira, sem armários
-  solid('workbench', 2.3, 12.5, 4.4, 1.1), solid('workbench', 0.5, 12.5, 1.1, 4), solid('workbench', 7.7, 12.5, 1.1, 2),
-  solid('roundtable', 3.6, 15.2, 1.8, 1.8),
-  deco('chair', 3.0, 16.1), deco('chair', 6.0, 16.1), deco('chair', 4.5, 17.55),
-  deco('bin', 8.3, 14.7),
+  solid('bigdesk', 15.5, 1.8, 3.2, 1.3), deco('chair', 17.1, 1.1), deco('chair', 17.1, 3.9),
+  deco('plant', 13.9, 6.1),
+  // sala de componentes: três mesas em U, mesa redonda com 3 cadeiras, lixeira, sem armários
+  solid('workbench', 2.6, 21.5, 5.6, 1.1), solid('workbench', 0.5, 21.5, 1.1, 3.7), solid('workbench', 9.4, 21.5, 1.1, 1.9),
+  solid('roundtable', 4.6, 24.4, 1.8, 1.8),
+  deco('chair', 4, 25.3), deco('chair', 7, 25.3), deco('chair', 5.5, 26.85),
+  deco('bin', 10, 23.7),
   // sala de segurança do trabalho
-  solid('lockerY', 0.15, 18.5, 0.7, 3.6), solid('table', 4.2, 20.2, 2.6, 1.2),
-  deco('chair', 4.8, 19.6), deco('chair', 6.2, 19.6), deco('chair', 5, 22.1), deco('chair', 6.4, 22.1),
-  deco('sign', 7.3, 19.3), deco('sign', 7.7, 22.9), deco('sign', 2.5, 23),
+  solid('lockerY', 0.15, 28.5, 0.7, 3.6), solid('table', 4.2, 30.2, 2.6, 1.2),
+  deco('chair', 4.8, 29.6), deco('chair', 6.2, 29.6), deco('chair', 5, 32.1), deco('chair', 6.4, 32.1),
+  deco('sign', 8.3, 29.3), deco('sign', 8.7, 32.9), deco('sign', 2.5, 33),
   // copa
-  solid('counterY', 0.15, 24.8, 0.9, 5.4), solid('fridge', 0.2, 30.8, 1, 1), solid('coffee', 1.3, 24.6, 1, 1), solid('vending', 10.8, 30.8, 1, 1),
-  ...[[4.5, 26.5], [8, 26.5]].flatMap(([x, y]) => [solid('table2', x, y, 1.6, 1.6), deco('chair', x + 0.8, y - 0.5), deco('chair', x + 0.8, y + 2.2)]),
+  solid('counterY', 0.15, 34.8, 0.9, 5.4), solid('fridge', 0.2, 42.8, 1, 1), solid('coffee', 1.3, 34.6, 1, 1), solid('vending', 12.8, 42.8, 1, 1),
+  ...[[5.5, 36.5], [9.5, 36.5]].flatMap(([x, y]) => [solid('table2', x, y, 1.6, 1.6), deco('chair', x + 0.8, y - 0.5), deco('chair', x + 0.8, y + 2.2)]),
   // mesa comprida na parte de baixo da copa
-  solid('tableLong', 2.6, 30.3, 6.2, 1.3), ...[3.4, 4.9, 6.4, 7.9].map((x) => deco('chair', x, 29.7)),
-  solid('cooler', 10.9, 25.1, 0.9, 0.9),
-  // ponto eletrônico: caixinha na parede da copa (lado de fora), do lado do Financeiro
-  solid('totem', 12.2, 25.4, 0.22, 0.6, { label: 'PONTO', color: '#7FE3FF' }),
+  solid('tableLong', 3.6, 41.3, 6.2, 1.3), ...[4.4, 5.9, 7.4, 8.9].map((x) => deco('chair', x, 40.7)),
+  solid('cooler', 12.8, 35.1, 0.9, 0.9),
+  // ponto eletrônico: caixinha presa na paredinha do canto de baixo à direita, perto do Financeiro
+  solid('totem', 32.4, 30.7, 0.6, 0.22, { label: 'PONTO', color: '#7FE3FF' }),
 ];
 
 export const MAP = {
-  w: 24,
-  h: 32,
-  server: { x: 14.5, y: 17.5, w: 1, h: 1 },
+  w: 36,
+  h: 44,
+  server: { x: 19.5, y: 25, w: 1, h: 1 },
   rooms: ROOMS,
   walls: WALLS,
   props: PROPS,
   // pontos onde os bugs podem nascer (bordas do espaço aberto)
   portals: [
-    { x: 22.2, y: 2.5 },
-    { x: 23.2, y: 9 },
-    { x: 23.2, y: 17 },
-    { x: 23.2, y: 26 },
-    { x: 21, y: 30.6 },
-    { x: 14, y: 30.6 },
-    { x: 10.6, y: 21 },
-    { x: 14.5, y: 7 },
+    { x: 34.6, y: 3 },
+    { x: 34.6, y: 12 },
+    { x: 34.6, y: 21 },
+    { x: 34.6, y: 34 },
+    { x: 29, y: 42 },
+    { x: 20, y: 42 },
+    { x: 12.6, y: 30 },
+    { x: 24, y: 8.4 },
   ],
   // zona segura: onde jogadores nascem e renascem
-  safeCenter: { x: 15, y: 18 },
+  safeCenter: { x: 20, y: 26 },
   safeRadius: 2.6,
 };
 

@@ -20,9 +20,9 @@ function rng(seed) {
 
 // portas (para o tapete): [x0, y0, x1, y1] em tiles
 const DOORS = [
-  [5, 5.75, 7, 6.35], [15, 5.75, 17, 6.35],
-  [8.65, 14.5, 9.35, 16.5], [8.65, 20.5, 9.35, 22.5],
-  [9.5, 23.65, 11.5, 24.35], [11.65, 27, 12.35, 29.5],
+  [5.5, 6.75, 7.5, 7.35], [16, 6.75, 18, 7.35],
+  [10.65, 23.5, 11.35, 25.5], [10.65, 30.5, 11.35, 32.5],
+  [11.5, 33.65, 13.5, 34.35], [13.65, 37.5, 14.35, 40],
 ];
 
 // cores de piso por sala: [placa A, placa B]
@@ -85,8 +85,9 @@ export function buildStatic() {
 
   // janelas (noite): [lado, t0, t1]
   const windows = [
-    ['R', 0.8, 2.8], ['R', 9.2, 11.2], ['R', 13, 15], ['R', 17.2, 19.2], ['R', 20.6, 23.4],
-    ['L', 0.8, 2.6], ['L', 12.6, 14.2], ['L', 15.6, 17.2], ['L', 3.4, 5.2], ['L', 6.6, 8.4], ['L', 9.2, 11], ['L', 25, 27], ['L', 27.8, 29.8],
+    ['R', 0.8, 2.8], ['R', 10.4, 12.4], ['R', 16.6, 18.6], ['R', 23.5, 25.5], ['R', 27.5, 29.5], ['R', 32, 34.4],
+    ['L', 0.8, 2.6], ['L', 3.4, 5.2], ['L', 9.2, 11], ['L', 12, 13.8], ['L', 15, 16.8], ['L', 18, 19.8],
+    ['L', 22.4, 24.2], ['L', 25, 26.8], ['L', 35, 37], ['L', 37.8, 39.8],
   ];
   for (const [side, t0, t1] of windows) {
     quad(side, t0, t1, 22, 56, K.paper);
@@ -107,7 +108,7 @@ export function buildStatic() {
   }
 
   // placas com o nome de cada sala na parede de fora
-  const plates = [['R', 'reuniao', 6], ['R', 'diretor', 16], ['L', 'componentes', 15], ['L', 'seguranca', 21], ['L', 'copa', 28]];
+  const plates = [['R', 'reuniao', 6.5], ['R', 'diretor', 17.5], ['L', 'componentes', 24.5], ['L', 'seguranca', 31], ['L', 'copa', 39]];
   for (const [side, id, tc] of plates) {
     const room = MAP.rooms.find((r) => r.id === id);
     const half = room.name.length / 4 + 0.35;
@@ -117,31 +118,31 @@ export function buildStatic() {
   }
 
   // sala de reunião: quadro branco grande; diretor: quadros na parede; corredor: cartaz e extintor
-  quad('R', 3.4, 8.6, 20, 50, '#8fa3ff');
-  quad('R', 3.55, 8.45, 22, 48, '#ffffff');
-  wline('R', 3.9, 42, 6.6, 42, K.cyan);
-  wline('R', 3.9, 37, 7.6, 37, K.red);
-  wline('R', 3.9, 32, 5.8, 32, '#3d50cf');
-  wline('R', 6.4, 27, 8.0, 27, K.green);
-  quad('R', 4.2, 7.8, 19, 21, '#d6c08a');
-  for (const [t0, t1] of [[13.2, 14.6], [17.4, 18.8]]) {
+  quad('R', 4, 9.2, 20, 50, '#8fa3ff');
+  quad('R', 4.15, 9.05, 22, 48, '#ffffff');
+  wline('R', 4.5, 42, 7.2, 42, K.cyan);
+  wline('R', 4.5, 37, 8.2, 37, K.red);
+  wline('R', 4.5, 32, 6.4, 32, '#3d50cf');
+  wline('R', 7, 27, 8.6, 27, K.green);
+  quad('R', 4.8, 8.4, 19, 21, '#d6c08a');
+  for (const [t0, t1] of [[14.2, 15.6], [19.6, 21]]) {
     quad('R', t0, t1, 26, 50, '#c9a10f');
     quad('R', t0 + 0.08, t1 - 0.08, 28, 48, K.pink);
     quad('R', t0 + 0.2, t1 - 0.2, 32, 44, K.yellow);
   }
   // posters de segurança
-  quad('L', 18.7, 20.3, 26, 52, '#0f8a5a');
-  quad('L', 18.8, 20.2, 28, 50, '#3dff8b');
-  quad('L', 19.15, 19.85, 34, 44, '#ffffff');
-  quad('L', 19.4, 19.6, 30, 48, '#ffffff');
-  quad('L', 21, 22.6, 26, 52, '#c9a10f');
-  quad('L', 21.1, 22.5, 28, 50, K.yellow);
-  quad('L', 21.55, 22.05, 36, 46, K.ink);
+  quad('L', 28.7, 30.3, 26, 52, '#0f8a5a');
+  quad('L', 28.8, 30.2, 28, 50, '#3dff8b');
+  quad('L', 29.15, 29.85, 34, 44, '#ffffff');
+  quad('L', 29.4, 29.6, 30, 48, '#ffffff');
+  quad('L', 31, 32.6, 26, 52, '#c9a10f');
+  quad('L', 31.1, 32.5, 28, 50, K.yellow);
+  quad('L', 31.55, 32.05, 36, 46, K.ink);
   // armários altos da copa
-  quad('L', 24.7, 30.3, 40, 58, '#a8531f');
+  quad('L', 34.7, 40.3, 40, 58, '#a8531f');
   for (let i = 0; i < 6; i++) {
-    quad('L', 24.75 + i * 0.93, 24.75 + i * 0.93 + 0.86, 42, 56, '#e8873a');
-    quad('L', 24.75 + i * 0.93 + 0.68, 24.75 + i * 0.93 + 0.74, 47, 52, K.yellow);
+    quad('L', 34.75 + i * 0.93, 34.75 + i * 0.93 + 0.86, 42, 56, '#e8873a');
+    quad('L', 34.75 + i * 0.93 + 0.68, 34.75 + i * 0.93 + 0.74, 47, 52, K.yellow);
   }
   // relógio e extintores
   {
@@ -150,7 +151,7 @@ export function buildStatic() {
     line(g, cx, cy, cx, cy - 3, K.ink);
     line(g, cx, cy, cx + 2, cy + 1, K.red);
   }
-  for (const [side, t] of [['R', 23.6], ['L', 23.4], ['L', 11.9]]) {
+  for (const [side, t] of [['R', 12.6], ['L', 20.4], ['L', 7.4]]) {
     const [ex, ey] = wl(side, t, 0);
     rect(g, K.red, Math.round(ex) - 3, Math.round(ey) - 18, 6, 13);
     rect(g, '#c01b2c', Math.round(ex) + 1, Math.round(ey) - 18, 2, 13);
@@ -204,14 +205,14 @@ export function buildStatic() {
   }
   // detalhes de piso por sala
   const fr = (x0, y0, x1, y1, color) => floorRect(g, OFF_X, OFF_Y, x0, y0, x1, y1, color);
-  fr(3.4, 4.7, 8.6, 5.2, '#e0954e'); // faixa clara na entrada da reunião
-  for (let i = 0; i < 6; i++) {
-    fr(8.15, 14.2 + i * 0.5, 8.6, 14.45 + i * 0.5, i % 2 ? '#0b0e1a' : '#ffd426'); // faixa de perigo na porta de componentes
+  fr(4.4, 5.8, 8.6, 6.3, '#e0954e'); // faixa clara na entrada da reunião
+  for (let i = 0; i < 5; i++) {
+    fr(10.15, 23.3 + i * 0.5, 10.6, 23.55 + i * 0.5, i % 2 ? '#0b0e1a' : '#ffd426'); // faixa de perigo na porta de componentes
   }
-  fr(1.6, 20.2, 2.4, 22.6, '#3dff8b'); // cruz verde da segurança
-  fr(1.0, 21.0, 3.0, 21.8, '#3dff8b');
-  fr(8.4, 20.5, 8.6, 22.5, '#1fb86a');
-  fr(3, 28.9, 10, 29.2, '#ffd97a'); // faixa da copa
+  fr(1.6, 30.2, 2.4, 32.6, '#3dff8b'); // cruz verde da segurança
+  fr(1.0, 31.0, 3.0, 31.8, '#3dff8b');
+  fr(10.4, 30.5, 10.6, 32.5, '#1fb86a');
+  fr(3, 38.9, 12, 39.2, '#ffd97a'); // faixa da copa
   for (const [x0, y0, x1, y1] of DOORS) {
     fr(x0, y0, x1, y1, '#0b0e1a');
     fr(x0 + 0.05, y0 + 0.05, x1 - 0.05, y1 - 0.05, '#232a78');

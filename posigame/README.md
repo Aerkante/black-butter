@@ -78,8 +78,8 @@ Mapa isométrico de 24x32 tiles baseado na planta do escritório:
 
 - **Sala de reunião** (mesa grande com notebooks e quadro branco) e **sala do diretor** (mesa executiva, estantes, sofá e tapete) no topo.
 - Coluna da esquerda: **componentes** (sem armários: três mesas com componentes em U, mesa redonda com 3 cadeiras, lixeira e janelas), **segurança do trabalho** (armários, mesa com capacetes e kit de primeiros socorros) e **copa** (balcão, geladeira, máquina de café, mesas e uma mesa comprida na parte de baixo).
-- **Ponto eletrônico**: uma caixinha na parede da copa (lado de fora), perto do Financeiro.
-- **Salão** com piso de porcelanato creme (peças de 2 m x 2 m). Só a Secretária executiva (perto do diretor) tem mesa individual; os demais setores têm **baias em "+" com 4 lugares**: Fiscal, SESMT e Cadastro na fileira de cima e, na coluna da direita, Projetos, Desenvolvimento e Financeiro (perto da copa). A sala do diretor é simples (mesa, duas cadeiras e uma planta).
+- **Ponto eletrônico**: uma caixinha na paredinha do canto de baixo à direita, perto do Financeiro.
+- **Salão** com piso de porcelanato creme (peças de 2 m x 2 m). Só a Secretária executiva (do lado de fora da sala do diretor) tem mesa individual; os demais setores têm **baias em "+" com 4 lugares** (mesas cremes, divisórias pretas, um monitor preto e um notebook por lugar): duas de Fiscal e duas de SESMT à esquerda, a baia larga do Cadastro em frente à porta do diretor e, na coluna da direita, Projetos, Desenvolvimento e Financeiro. A sala do diretor é simples (mesa, duas cadeiras e uma planta). O mapa tem 36 x 44 tiles.
 - Salas com divisórias de vidro e portas de 2 tiles; só a reunião tem piso de madeira, e cada sala tem uma placa com o nome na parede.
 - **Minimapa** no canto da tela e uma seta que aponta para o servidor quando ele sai da vista.
 - Os bugs **dão a volta pelas paredes e entram pelas portas** (navegação por campo de distâncias em `server/nav.js`); quem está atrás de uma parede não é atacado através dela.
@@ -231,3 +231,8 @@ O servidor valida tudo e, **quem usa qualquer cheat fica sem registrar pontos no
 recorde de equipes). Códigos: `sudo` (modo deus liga/desliga), `hotfix` (cura o time e o servidor), `cafezao` (velocidade 45 s),
 `turbo` (recargas zeradas + overclock), `rmrf` (remove todos os bugs), `deploy` (pula para a próxima onda), `segfault` (chama o chefe).
 Desligue tudo com `CHEATS=0`.
+
+## Easter egg e power-ups de chefe
+
+- Segredo da sala de componentes: no cantinho de baixo à esquerda, segurar o **ataque básico** faz o personagem deitar no chão e dormir (Zzz) até começar a se mover ou levar dano.
+- Os 3 power-ups que o chefe deixa **não somem** até alguém pegar (os dos bugs comuns duram 14 s).

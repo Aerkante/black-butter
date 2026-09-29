@@ -42,9 +42,9 @@ test('mapa: pontos seguros e portais livres de obstáculos', () => {
 });
 
 test('colisão: desliza pela parede em vez de atravessar', () => {
-  const [x, y] = moveEntity(1.5, 8.6, 1, 1, 4, 0.1, 0.3); // contra o braço da baia (2.0..3.0, 8..11.8)
-  assert.ok(x <= 1.71);
-  assert.ok(y > 8.6, 'continua deslizando no eixo livre');
+  const [x, y] = moveEntity(2.4, 10, 1, 1, 4, 0.1, 0.3); // contra o braço da baia de Fiscal (x 2.9..3.9, y 9.6..13.4)
+  assert.ok(x <= 2.61);
+  assert.ok(y > 10, 'continua deslizando no eixo livre');
 });
 
 test('todas as classes têm 3 habilidades com nome curto para o botão', () => {

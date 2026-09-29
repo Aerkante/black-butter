@@ -191,15 +191,40 @@ export class Renderer {
     const items = [];
     const vis = (sx, sy, pad) => sx > -pad && sx < W + pad && sy > -pad && sy < H + pad;
     // móveis fixos (só os que aparecem na tela entram na fila de desenho)
+    // o que estiver na frente do jogador local e escondê-lo fica meio transparente
+    const meP = view.players.find((p) => p.isYou);
+    let mx0 = 0;
+    let mx1 = 0;
+    let my0 = 0;
+    let my1 = 0;
+    const meDepth = meP ? meP.x + meP.y : 0;
+    if (meP) {
+      const [mx, my] = project(meP.x, meP.y);
+      mx0 = ox + mx - 14;
+      mx1 = ox + mx + 14;
+      my0 = oy + my - 50;
+      my1 = oy + my + 4;
+    }
+    const hides = (spr, sx, sy, depth) => {
+      if (!meP || depth <= meDepth + 0.05) return false;
+      const x0 = sx - spr.ax;
+      const y0 = sy - spr.ay;
+      return x0 < mx1 && x0 + spr.canvas.width > mx0 && y0 < my1 && y0 + spr.canvas.height > my0;
+    };
     for (const p of this.propList) {
       const [px, py] = project(p.ax, p.ay);
       if (!vis(ox + px, oy + py, 130)) continue;
+      if (!p.isLabel && p.spr.canvas.height > 60 && hides(p.spr, ox + px, oy + py, p.depth)) {
+        items.push({ d: p.depth, f: () => { this.g.globalAlpha = 0.4; this.blitProp(p, ox, oy); this.g.globalAlpha = 1; } });
+        continue;
+      }
       items.push({ d: p.depth, f: () => this.blitProp(p, ox, oy) });
     }
     for (const w of this.wallChunks) {
       const [px, py] = project(w.x, w.y);
       if (!vis(ox + px, oy + py, 90)) continue;
-      items.push({ d: w.depth, f: () => this.g.drawImage(w.sprite.canvas, Math.round(ox + px - w.sprite.ax), Math.round(oy + py - w.sprite.ay)) });
+      const fade = hides(w.sprite, ox + px, oy + py, w.depth);
+      items.push({ d: w.depth, f: () => { if (fade) this.g.globalAlpha = 0.4; this.g.drawImage(w.sprite.canvas, Math.round(ox + px - w.sprite.ax), Math.round(oy + py - w.sprite.ay)); this.g.globalAlpha = 1; } });
     }
     const S = MAP.server;
     items.push({ d: S.x + S.y + 1, f: () => this.drawServer(ox, oy, view, now, q) });
@@ -271,6 +296,16 @@ export class Renderer {
     g.drawImage(ring.c, x - ring.ax, y - ring.ay);
     this.shadow(x, y + 1, 7, 3, q);
     if (p.flags & 32) drawShield(this, x, y, now);
+    if (p.flags & 128) {
+      // travesseirinho e coberta
+      const fx = p.face < 0 ? -1 : 1;
+      g.fillStyle = '#0b0e1a';
+      g.fillRect(x + fx * 9 - 8, y - 9, 16, 11);
+      g.fillStyle = '#fff6e0';
+      g.fillRect(x + fx * 9 - 7, y - 8, 14, 9);
+      g.fillStyle = '#d6c08a';
+      g.fillRect(x + fx * 9 - 7, y - 1, 14, 2);
+    }
     if (p.look) {
       const invBlink = p.flags & 2 && Math.floor(now * 8) % 2 === 0;
       if (!invBlink) {
@@ -280,7 +315,7 @@ export class Renderer {
         const dw = fr.w * S;
         const dh = fr.h * S;
         const dx = -fr.ax * S;
-        const dy = -fr.ay * S + (pose === 'down' ? 8 : 0);
+        const dy = -fr.ay * S + (pose === 'down' || pose === 'sleep' ? 8 : 0);
         if (p.flags & 64 && p.moving && q.bursts) {
           // velocidade: cópias esmaecidas ficam para trás
           for (let i = 3; i >= 1; i--) {
@@ -299,6 +334,15 @@ export class Renderer {
           g.drawImage(fr.canvas, x + dx, y + dy, dw, dh);
         }
       }
+    }
+    if (p.flags & 128) {
+      // easter egg: dormindo (travesseiro e Zzz subindo)
+      for (let i = 0; i < 3; i++) {
+        const ph = (now * 0.7 + i / 3) % 1;
+        g.globalAlpha = 1 - ph;
+        this.text('Z', x + 8 + ph * 10 + i * 3, y - 14 - ph * 26, C.paper, `${8 + i * 2}px ${PX}`);
+      }
+      g.globalAlpha = 1;
     }
     const top = y - 50;
     if (!(p.flags & 1)) {
@@ -447,7 +491,7 @@ export class Renderer {
   // Minimapa (planta do escritório) e seta apontando para o servidor quando ele sai da tela
   drawMinimap(view, now) {
     const g = this.g;
-    const s = this.W >= 560 ? 3 : 2;
+    const s = 2;
     const mw = MAP.w * s;
     const mh = MAP.h * s;
     const x0 = 6;
@@ -461,9 +505,9 @@ export class Renderer {
     g.fillStyle = '#fff6e0';
     for (const w of MAP.walls) g.fillRect(x0 + Math.round(w.x * s), y0 + Math.round(w.y * s), Math.max(1, Math.round(w.w * s)), Math.max(1, Math.round(w.h * s)));
     for (const p of MAP.props) {
-      if (!p.solid || (p.t !== 'desk' && p.t !== 'table6' && p.t !== 'bigdesk')) continue;
+      if (!p.solid || (p.t !== 'desk' && p.t !== 'baia' && p.t !== 'table6' && p.t !== 'bigdesk')) continue;
       g.fillStyle = SECTORS[p.sector]?.color || '#8fa3ff';
-      g.fillRect(x0 + Math.round(p.x * s), y0 + Math.round(p.y * s), Math.max(1, Math.round(p.w * s)), Math.max(1, Math.round(p.h * s)));
+      for (const r of p.rects || [p]) g.fillRect(x0 + Math.round(r.x * s), y0 + Math.round(r.y * s), Math.max(1, Math.round(r.w * s)), Math.max(1, Math.round(r.h * s)));
     }
     g.fillStyle = '#ff3b4e';
     for (const p of MAP.portals) g.fillRect(x0 + Math.round(p.x * s), y0 + Math.round(p.y * s), 1, 1);

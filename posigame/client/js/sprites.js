@@ -47,6 +47,7 @@ export const POSES = {
   a2: { ray: -1 },
   hit: { bob: 1, flash: true },
   down: { down: true },
+  sleep: { down: true, sleep: true },
 };
 
 function drawCharacter(g, look, pose) {
@@ -91,8 +92,15 @@ function drawCharacter(g, look, pose) {
   px(3, 6 + bob, 2, 1, skin);
   const hairRects = (A ? HAIR_A : HAIR_B)[look.hairStyle];
   for (const [x, y, w, h] of hairRects) px(x, y + bob, w, h, hair);
-  px(2, 3 + bob, 1, 1, '#0b0e1a');
-  px(5, 3 + bob, 1, 1, '#0b0e1a');
+  if (pose.sleep) {
+    px(2, 3 + bob, 1, 2, skin); // olhos fechados
+    px(5, 3 + bob, 1, 2, skin);
+    px(2, 4 + bob, 1, 1, '#0b0e1a');
+    px(5, 4 + bob, 1, 1, '#0b0e1a');
+  } else {
+    px(2, 3 + bob, 1, 1, '#0b0e1a');
+    px(5, 3 + bob, 1, 1, '#0b0e1a');
+  }
   px(3, 5 + bob, 2, 1, '#B5654E');
   if (look.glasses === 1) {
     px(1, 3 + bob, 6, 1, '#0b0e1a');
@@ -409,6 +417,7 @@ export function classIcon(cls) {
 // Nome da pose para o estado atual do jogador (animações por quadros).
 export function poseFor(flags, moving, t) {
   if (flags & 1) return 'down';
+  if (flags & 128) return 'sleep';
   if (flags & 8) return 'hit';
   if (flags & 16) {
     const ph = Math.floor((t * 10) % 3);

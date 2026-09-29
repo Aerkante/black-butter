@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match } from '../server/match.js';
-import { MAP, SAFE_SPOTS, TICK_DT, LIMITS } from '../shared/game.js';
+import { MAP, EGG, SAFE_SPOTS, TICK_DT, LIMITS } from '../shared/game.js';
 
 function lcg(seed = 7) {
   let s = seed;
@@ -259,21 +259,21 @@ test('jogador não atravessa obstáculos nem sai do mapa', () => {
   const a = add(m, 'Ana');
   m.state = 'break';
   m.stateT = 999;
-  a.x = 1.5;
-  a.y = 8.2;
+  a.x = 2.5;
+  a.y = 12.6; // canto da baia de Fiscal (braço vertical em x 2.9..3.9)
   m.input(a, { dx: 1, dy: 0 });
   run(m, 3);
-  assert.ok(a.x < 1.8, 'parou no braço da baia (2.0..3.0)');
+  assert.ok(a.x < 2.7, 'parou no braço da baia');
   a.x = 1;
   a.y = 1;
   m.input(a, { dx: -1, dy: -1 });
   run(m, 3);
   assert.ok(a.x >= 0 && a.y >= 0 && a.x <= MAP.w && a.y <= MAP.h);
   a.x = 4;
-  a.y = 5;
+  a.y = 6;
   m.input(a, { dx: 0, dy: 1 });
   run(m, 3);
-  assert.ok(a.y < 5.8, 'não atravessa a divisória da sala (y = 6), só pela porta');
+  assert.ok(a.y < 6.8, 'não atravessa a divisória da sala (y = 7), só pela porta');
 });
 
 test('snapshot é compacto e traz o estado pessoal', () => {
@@ -293,13 +293,13 @@ test('chefe atravessa a porta da copa e chega ao servidor (navegação por porta
   m.state = 'wave';
   m.wave = 5;
   m.queue = ['bug']; // impede o fim da onda
-  const boss = m.makeEnemy('boss', 5, 28, 0); // dentro da copa
+  const boss = m.makeEnemy('boss', 6, 38, 0); // dentro da copa
   boss.hp = boss.maxHp = 99999;
   run(m, 60, () => {
     a.hp = a.maxHp;
     m.server.hp = m.server.max;
   });
-  const d = Math.hypot(boss.x - 15, boss.y - 18);
+  const d = Math.hypot(boss.x - 20, boss.y - 25);
   assert.ok(d < 4, `chefe saiu da copa e chegou perto do servidor (distância ${d.toFixed(1)})`);
 });
 
@@ -310,9 +310,9 @@ test('bugs contornam a parede e entram pela porta atrás do jogador', () => {
   m.wave = 2;
   m.queue = ['bug'];
   a.x = 4;
-  a.y = 4.5; // dentro da sala de reunião (porta em x 5..7, y = 6)
+  a.y = 5.5; // dentro da sala de reunião (porta em x 5.5..7.5, y = 7)
   a.invuln = m.t + 999;
-  const e = m.makeEnemy('bug', 4, 7.5, 0); // logo do outro lado da divisória
+  const e = m.makeEnemy('bug', 4, 8.2, 0); // logo do outro lado da divisória
   e.hp = e.maxHp = 99999;
   e.tauntBy = a.id; // provocado (Grito do Tank): tem de ir até o jogador, dando a volta
   e.tauntUntil = m.t + 999;
@@ -329,16 +329,16 @@ test('jogador atrás da parede não leva dano de bug do outro lado', () => {
   m.wave = 2;
   m.queue = ['bug'];
   a.x = 4;
-  a.y = 5.4;
+  a.y = 6.4;
   a.invuln = 0;
   a.hp = a.maxHp;
-  const e = m.makeEnemy('bug', 4, 6.7, 0); // colado na divisória, do outro lado
+  const e = m.makeEnemy('bug', 4, 7.7, 0); // colado na divisória, do outro lado
   e.hp = e.maxHp = 99999;
   e.atkT = 0;
   for (let i = 0; i < 20; i++) {
     m.update(TICK_DT);
     a.x = 4;
-    a.y = 5.4; // jogador parado
+    a.y = 6.4; // jogador parado
   }
   assert.equal(a.hp, a.maxHp, 'a parede protege enquanto o bug não chega pela porta');
 });
@@ -350,7 +350,7 @@ test('todos os portais têm caminho até o servidor e nenhum móvel tranca as sa
   for (const r of ['reuniao', 'seguranca', 'componentes', 'copa']) {
     const room = MAP.rooms.find((x) => x.id === r);
     // porta de cada sala: um ponto livre logo dentro da sala, ao lado da porta
-    const probes = { reuniao: [6, 5.2], seguranca: [8.2, 21.5], componentes: [8.2, 15.5], copa: [10.5, 25.2] };
+    const probes = { reuniao: [6.5, 6.2], seguranca: [10.2, 31.5], componentes: [10.2, 24.5], copa: [12.5, 34.8] };
     const [x, y] = probes[r];
     assert.ok(nav.reachable(field, x, y), `sala ${room.name} acessível`);
   }
@@ -549,7 +549,7 @@ test('Firewall queima os bugs colados no servidor enquanto dura', () => {
   assert.ok(afterPulse < 5000, 'pulso inicial');
   for (let i = 0; i < 40; i++) m.update(TICK_DT);
   assert.ok(e.hp < afterPulse, 'queimadura contínua');
-  const far = m.makeEnemy('bug', 22, 30, 0);
+  const far = m.makeEnemy('bug', 32, 40, 0);
   far.hp = far.maxHp = 5000;
   const farHp = far.hp;
   for (let i = 0; i < 40; i++) m.update(TICK_DT);
@@ -630,4 +630,57 @@ test('cheats secretos: valem só no servidor e tiram a rodada do ranking', () =>
   m.finishRun(a);
   assert.equal(log.progress.length, 0, 'sem pontos no ranking');
   assert.equal(log.runs.length, 0);
+});
+
+test('power-ups de chefe ficam até serem pegos; os comuns somem em 14 s', () => {
+  const { m } = mk();
+  const a = add(m, 'Ana');
+  m.state = 'break';
+  m.stateT = 9999;
+  m.dropPickup(30, 40, true);
+  m.dropPickup(31, 40, false);
+  assert.equal(m.pickups.length, 2);
+  a.x = 5;
+  a.y = 5;
+  run(m, 60);
+  assert.equal(m.pickups.length, 1, 'só o de chefe sobrou');
+  assert.ok(m.pickups[0].persist);
+  a.x = m.pickups[0].x;
+  a.y = m.pickups[0].y;
+  run(m, 1);
+  assert.equal(m.pickups.length, 0, 'foi consumido');
+  const { m: m2 } = mk();
+  const p2 = add(m2, 'Beto', 'tank');
+  m2.state = 'wave';
+  m2.wave = 5;
+  m2.queue = ['bug'];
+  const boss = m2.makeEnemy('boss', 30, 40, 0);
+  m2.killEnemy(boss, p2);
+  assert.equal(m2.pickups.filter((k) => k.persist).length, 3, 'o chefe deixa 3 power-ups fixos');
+});
+
+test('easter egg: atacar no cantinho da sala de componentes faz dormir até se mexer', () => {
+  const { m } = mk();
+  const a = add(m, 'Ana');
+  m.state = 'break';
+  m.stateT = 9999;
+  a.x = EGG.x + 1;
+  a.y = EGG.y + 1;
+  m.input(a, { dx: 0, dy: 0, a: 1 });
+  run(m, 1);
+  assert.equal(a.sleep, true);
+  assert.ok(m.snapshot(a).p[0][5] & 128, 'flag de dormindo no snapshot');
+  m.input(a, { dx: 0, dy: 0, a: 1 });
+  run(m, 1);
+  assert.equal(a.sleep, true, 'continua dormindo');
+  m.input(a, { dx: 1, dy: 0 });
+  run(m, 0.2);
+  assert.equal(a.sleep, false, 'acorda ao se mover');
+  // fora do canto, atacar não faz nada
+  const b = add(m, 'Beto');
+  b.x = 20;
+  b.y = 30;
+  m.input(b, { dx: 0, dy: 0, a: 1 });
+  run(m, 1);
+  assert.equal(!!b.sleep, false);
 });

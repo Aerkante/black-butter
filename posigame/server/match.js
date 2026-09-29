@@ -10,6 +10,7 @@ import {
   ENEMY_IDS,
   LIMITS,
   PICKUP_TYPES,
+  EGG,
   moveEntity,
   distToRect,
 } from '../shared/game.js';
@@ -111,6 +112,7 @@ export class Match {
     p.hurt = false;
     p.runDone = false;
     p.cheated = false;
+    p.sleep = false;
     p.god = false;
     p.cd = { atk: 0, s1: 0, s2: 0, ult: 0 };
     p.fx = { speedUntil: 0, shieldUntil: 0, slowUntil: 0, overUntil: 0 };
@@ -306,6 +308,7 @@ export class Match {
 
   skill(p, n) {
     if (p.ghost || p.downed || this.state === 'over') return;
+    p.sleep = false;
     const key = n === 1 ? 's1' : n === 2 ? 's2' : n === 3 ? 'ult' : null;
     if (!key || p.cd[key] > this.t) return;
     const def = CLASSES[p.cls].skills[n - 1];
@@ -362,6 +365,14 @@ export class Match {
       if (p.fx.speedUntil > this.t) speed *= 1.6;
       if (p.fx.slowUntil > this.t) speed *= 0.5;
       if (p.dx || p.dy) [p.x, p.y] = moveEntity(p.x, p.y, p.dx, p.dy, speed, dt, PLAYER_RADIUS);
+      // easter egg: atacar no cantinho secreto da sala de componentes faz o personagem deitar e dormir
+      if (p.sleep && (p.dx || p.dy)) p.sleep = false;
+      if (!p.sleep && p.atk && p.x >= EGG.x && p.x <= EGG.x + EGG.w && p.y >= EGG.y && p.y <= EGG.y + EGG.h) {
+        p.sleep = true;
+        p.atk = false;
+        this.L('info', 'jogador', `${p.nick} deitou para tirar um cochilo na sala de componentes`);
+      }
+      if (p.sleep) p.atk = false;
       if (p.atk && p.cd.atk <= this.t) this.attack(p);
       p.hurt = p.lastHit > this.t - 0.25;
     }
@@ -768,10 +779,11 @@ export class Match {
       }
     }
     const drops = e.type === 'boss' ? 3 : this.rand() < (e.type === 'minimail' ? 0.04 : 0.14) ? 1 : 0;
-    for (let i = 0; i < drops; i++) this.dropPickup(e.x + (i - (drops - 1) / 2) * 0.7, e.y + (i % 2) * 0.3);
+    for (let i = 0; i < drops; i++) this.dropPickup(e.x + (i - (drops - 1) / 2) * 0.7, e.y + (i % 2) * 0.3, e.type === 'boss');
   }
 
-  dropPickup(x, y) {
+  // Power-ups de chefe (persist) não somem até alguém pegar; os demais duram 14 s.
+  dropPickup(x, y, persist = false) {
     let roll = this.rand() * PICKUP_TYPES.reduce((a, p) => a + p.w, 0);
     let kind = 0;
     for (let i = 0; i < PICKUP_TYPES.length; i++) {
@@ -783,7 +795,7 @@ export class Match {
     }
     const nx = Math.min(MAP.w - 0.5, Math.max(0.5, x));
     const ny = Math.min(MAP.h - 0.5, Math.max(0.5, y));
-    this.pickups.push({ id: this.nextPickupId++, kind, x: nx, y: ny, exp: this.t + 14 });
+    this.pickups.push({ id: this.nextPickupId++, kind, x: nx, y: ny, exp: this.t + (persist ? 36000 : 14), persist });
   }
 
   // ----- dano e cura -----
@@ -797,6 +809,7 @@ export class Match {
     }
     p.hp -= dmg;
     p.lastHit = this.t;
+    p.sleep = false;
     this.waveHurt = true;
     this.events.push(['hurt', p.id]);
     this.L('debug', 'combate', `${p.nick} levou ${Math.round(dmg)} de dano (vida ${Math.max(0, Math.round(p.hp))}/${p.maxHp})`);
@@ -947,7 +960,8 @@ export class Match {
         (p.hurt ? 8 : 0) |
         (p.lastAtk > t - 0.3 ? 16 : 0) |
         (p.fx.shieldUntil > t ? 32 : 0) |
-        (p.fx.speedUntil > t ? 64 : 0);
+        (p.fx.speedUntil > t ? 64 : 0) |
+        (p.sleep ? 128 : 0);
       s.p.push([p.id, round2(p.x), round2(p.y), Math.round(p.hp), p.maxHp, flags, p.face, p.dx || p.dy ? 1 : 0, p.score, Math.round(p.reviveProg * 100)]);
     }
     for (const e of this.enemies) {

@@ -7,33 +7,69 @@ const BOOK_COLORS = ['#ff3b4e', '#2bc8ff', '#ffd426', '#3dff8b', '#ff4fa3', '#ff
 
 // ----- salão -----
 
+const CREAM = tone('#f7ebc8', '#c9b27a', '#e0cc94');
+const BLACK = tone('#23262f', '#0a0b10', '#14161d');
+
+// Telas variadas dos monitores e notebooks (decalques na face visível)
+const SCREENS = ['code', 'chart', 'term', 'chat', 'dash', 'mail'];
+function screenArt(g, ox, oy, o, face, kind, v0 = 1.5, v1 = 7.5) {
+  const d = (u0, u1, a, b, c) => decal(g, ox, oy, o, face, u0, u1, v0 + a, v0 + b, c);
+  const H = v1 - v0;
+  d(0.08, 0.92, 0, H, '#0a0e28');
+  if (kind === 'code') {
+    d(0.14, 0.5, H - 1.5, H - 0.5, K.green); d(0.24, 0.8, H - 3, H - 2, K.cyan); d(0.14, 0.6, H - 4.5, H - 3.5, K.yellow); d(0.3, 0.7, H - 6, H - 5, K.pink);
+  } else if (kind === 'chart') {
+    d(0.16, 0.3, 0.6, 2.2, K.cyan); d(0.36, 0.5, 0.6, 3.6, K.green); d(0.56, 0.7, 0.6, 2.8, K.yellow); d(0.76, 0.86, 0.6, 4.6, K.pink);
+  } else if (kind === 'term') {
+    d(0.08, 0.92, 0, H, '#03150c'); d(0.14, 0.6, H - 1.5, H - 0.7, '#3dff8b'); d(0.14, 0.4, H - 3, H - 2.2, '#3dff8b'); d(0.14, 0.7, H - 4.5, H - 3.7, '#1fb86a');
+  } else if (kind === 'chat') {
+    d(0.14, 0.62, H - 2, H - 0.8, '#2bc8ff'); d(0.4, 0.86, H - 3.8, H - 2.6, '#f7f3e8'); d(0.14, 0.5, H - 5.6, H - 4.4, '#2bc8ff');
+  } else if (kind === 'dash') {
+    d(0.12, 0.45, H - 3, H - 0.6, K.orange); d(0.52, 0.88, H - 3, H - 0.6, '#3d50cf'); d(0.12, 0.88, 0.5, H - 3.6, '#1b2a70'); d(0.2, 0.7, 1.3, 2, K.yellow);
+  } else {
+    d(0.14, 0.86, H - 1.4, H - 0.4, '#f7f3e8'); d(0.14, 0.86, H - 3, H - 2.2, '#c8ccd8'); d(0.14, 0.6, H - 4.4, H - 3.6, '#c8ccd8'); d(0.7, 0.86, H - 1.4, H - 0.4, K.red);
+  }
+}
+
+// monitor preto fino em pé; face 'L' se for fino em v, 'R' se for fino em u
+function monitor(g, ox, oy, u, v, z, face, kind) {
+  const thin = 0.07;
+  const o = face === 'L' ? { u, v, z, w: 0.46, d: thin, h: 10, ...BLACK } : { u, v, z, w: thin, d: 0.46, h: 10, ...BLACK };
+  box(g, ox, oy, o);
+  screenArt(g, ox, oy, o, face, kind, 1.5, 8.5);
+  box(g, ox, oy, face === 'L' ? { u: u + 0.18, v: v - 0.02, z, w: 0.1, d: 0.1, h: 1.5, ...BLACK } : { u: u - 0.02, v: v + 0.18, z, w: 0.1, d: 0.1, h: 1.5, ...BLACK });
+}
+
+// notebook aberto: base fina + tela inclinada (só o painel de trás aparece de frente)
+function laptop(g, ox, oy, u, v, z, face, kind) {
+  const silver = tone('#dfe3ee', '#8f97ad', '#b7bed2');
+  if (face === 'L') {
+    box(g, ox, oy, { u, v, z, w: 0.42, d: 0.3, h: 1, ...silver });
+    const scr = { u, v: v - 0.02, z: z + 1, w: 0.42, d: 0.05, h: 6.5, ...BLACK };
+    box(g, ox, oy, scr);
+    screenArt(g, ox, oy, scr, 'L', kind, 0.6, 6);
+  } else {
+    box(g, ox, oy, { u, v, z, w: 0.3, d: 0.42, h: 1, ...silver });
+    const scr = { u: u - 0.02, v, z: z + 1, w: 0.05, d: 0.42, h: 6.5, ...BLACK };
+    box(g, ox, oy, scr);
+    screenArt(g, ox, oy, scr, 'R', kind, 0.6, 6);
+  }
+}
+
 function drawDesk(g, ox, oy, w, d, p) {
   const accent = SECTORS[p.sector]?.color || K.yellow;
-  const top = { u: 0, v: 0, z: 0, w: 2, d: 1, h: 9, ...WOOD };
+  const top = { u: 0, v: 0, z: 0, w: 2, d: 1, h: 9, ...CREAM };
   box(g, ox, oy, top);
-  decal(g, ox, oy, top, 'L', 0.06, 0.46, 1, 7, '#c0621f');
-  decal(g, ox, oy, top, 'L', 0.06, 0.46, 3.6, 4.4, '#7c3a14');
-  decal(g, ox, oy, top, 'L', 0.54, 0.94, 1, 7, '#c0621f');
-  decal(g, ox, oy, top, 'L', 0.54, 0.94, 3.6, 4.4, '#7c3a14');
+  decal(g, ox, oy, top, 'L', 0.06, 0.46, 1, 7, '#d8c58c');
+  decal(g, ox, oy, top, 'L', 0.54, 0.94, 1, 7, '#d8c58c');
   decal(g, ox, oy, top, 'L', 0.2, 0.32, 4.6, 5.4, accent);
-  decal(g, ox, oy, top, 'T', 0.42, 0.82, 0.45, 0.9, accent); // mouse pad na cor do setor
-  box(g, ox, oy, { u: 0.7, v: 0.16, z: 9, w: 0.16, d: 0.1, h: 2, ...DARK });
-  const mon = { u: 0.42, v: 0.12, z: 11, w: 0.7, d: 0.08, h: 11, ...DARK };
-  box(g, ox, oy, mon);
-  decal(g, ox, oy, mon, 'L', 0.08, 0.92, 1.5, 9.5, '#062a1a');
-  decal(g, ox, oy, mon, 'L', 0.14, 0.86, 2.5, 8.5, K.green);
-  decal(g, ox, oy, mon, 'L', 0.2, 0.55, 5.5, 8.5, '#12b855');
-  decal(g, ox, oy, mon, 'L', 0.62, 0.8, 3, 5, '#c8ffe0');
-  decal(g, ox, oy, mon, 'L', 0.0, 0.14, 8, 11, K.yellow);
-  decal(g, ox, oy, mon, 'L', 0.86, 1.0, 5, 8, accent);
-  const kb = { u: 0.45, v: 0.5, z: 9, w: 0.5, d: 0.24, h: 1, ...tone('#e7d9b0', '#a89a6a', '#c9bb8a') };
-  box(g, ox, oy, kb);
-  decal(g, ox, oy, kb, 'T', 0.08, 0.92, 0.2, 0.45, '#a89a6a');
-  box(g, ox, oy, { u: 1.05, v: 0.56, z: 9, w: 0.1, d: 0.12, h: 1, ...DARK });
-  const mug = { u: 1.42, v: 0.3, z: 9, w: 0.16, d: 0.16, h: 4, ...WHITE };
+  decal(g, ox, oy, top, 'T', 0.05, 0.3, 0.7, 0.95, accent); // plaquinha do setor
+  monitor(g, ox, oy, 0.5, 0.16, 9, 'L', 'mail');
+  laptop(g, ox, oy, 1.2, 0.5, 9, 'L', 'chat');
+  box(g, ox, oy, { u: 0.55, v: 0.55, z: 9, w: 0.5, d: 0.2, h: 1, ...tone('#e7e2d2', '#a8a08a', '#c9c2ae') }); // teclado
+  const mug = { u: 1.7, v: 0.35, z: 9, w: 0.16, d: 0.16, h: 4, ...WHITE };
   box(g, ox, oy, mug);
   decal(g, ox, oy, mug, 'T', 0.15, 0.85, 0.15, 0.85, '#5b3a29');
-  box(g, ox, oy, { u: 1.28, v: 0.62, z: 9, w: 0.34, d: 0.24, h: 1, ...WHITE });
 }
 
 function drawChair(g, ox, oy) {
@@ -416,49 +452,60 @@ function drawVending(g, ox, oy, w, d) {
 
 // ponto eletrônico: caixinha presa na parede (face voltada para +x)
 function drawTotem(g, ox, oy, w, d) {
+  const face = w >= d ? 'L' : 'R';
   const o = { u: 0, v: 0, z: 22, w, d, h: 15, top: '#5a66ff', left: '#1b2170', right: '#2a36b0' };
   box(g, ox, oy, o);
-  decal(g, ox, oy, o, 'R', 0.1, 0.9, 5, 13, '#0a0e40'); // moldura da tela
-  decal(g, ox, oy, o, 'R', 0.16, 0.84, 6, 12.5, K.cyan);
-  decal(g, ox, oy, o, 'R', 0.46, 0.54, 8, 11, '#0a0e40'); // ponteiros do relógio
-  decal(g, ox, oy, o, 'R', 0.46, 0.66, 9.5, 10.5, '#0a0e40');
-  decal(g, ox, oy, o, 'R', 0.3, 0.7, 1.5, 3.5, K.green); // leitor
+  decal(g, ox, oy, o, face, 0.1, 0.9, 5, 13, '#0a0e40'); // moldura da tela
+  decal(g, ox, oy, o, face, 0.16, 0.84, 6, 12.5, K.cyan);
+  decal(g, ox, oy, o, face, 0.46, 0.54, 8, 11, '#0a0e40'); // ponteiros do relógio
+  decal(g, ox, oy, o, face, 0.46, 0.66, 9.5, 10.5, '#0a0e40');
+  decal(g, ox, oy, o, face, 0.3, 0.7, 1.5, 3.5, K.green); // leitor
 }
 
-// baia em "+": quatro braços de mesa em volta de um centro, um lugar em cada canto
-function drawBaia(g, ox, oy, w, d, p) {
+// baia em "+": quatro braços de mesa creme em volta do centro, divisórias pretas no meio,
+// um monitor preto e um notebook por lugar (sem desktop). w x h = tamanho total do "+".
+function drawBaia(g, ox, oy, w, h, p) {
   const accent = SECTORS[p.sector]?.color || K.yellow;
   const H = 9;
+  const A = (w - 1) / 2; // comprimento do braço em x
+  const B = (h - 1) / 2; // comprimento do braço em y
   const arm = (u, v, aw, ad) => {
-    const o = { u, v, z: 0, w: aw, d: ad, h: H, ...WOOD };
+    const o = { u, v, z: 0, w: aw, d: ad, h: H, ...CREAM };
     box(g, ox, oy, o);
-    decal(g, ox, oy, o, 'L', 0.04, 0.96, 1, 6, '#c0621f');
-    decal(g, ox, oy, o, 'R', 0.04, 0.96, 1, 6, '#c0621f');
+    decal(g, ox, oy, o, 'L', 0.03, 0.97, 1, 6, '#d8c58c');
+    decal(g, ox, oy, o, 'R', 0.03, 0.97, 1, 6, '#d8c58c');
     return o;
   };
-  const screen = (u, v, vertical) => {
-    // monitor pequeno no braço (parede fina na direção do braço)
-    const m = vertical ? { u, v, z: H, w: 0.08, d: 0.7, h: 9, ...DARK } : { u, v, z: H, w: 0.7, d: 0.08, h: 9, ...DARK };
-    box(g, ox, oy, m);
-    decal(g, ox, oy, m, vertical ? 'R' : 'L', 0.1, 0.9, 1.5, 7.5, K.green);
-    decal(g, ox, oy, m, vertical ? 'R' : 'L', 0.15, 0.45, 5, 7, '#c8ffe0');
-  };
-  const kb = (u, v) => box(g, ox, oy, { u, v, z: H, w: 0.4, d: 0.24, h: 1, ...tone('#e7d9b0', '#a89a6a', '#c9bb8a') });
-  const A = (w - 1) / 2; // comprimento de cada braço
-  arm(A, 0, 1, A); // braço de trás
-  screen(A + 0.22, 0.2, false);
-  arm(0, A, A, 1); // braço da esquerda
-  screen(0.2, A + 0.24, true);
-  const hub = arm(A, A, 1, 1);
-  decal(g, ox, oy, hub, 'T', 0.15, 0.85, 0.15, 0.85, accent); // placa do setor no centro
-  arm(A + 1, A, A, 1); // braço da direita
-  screen(w - 0.3, A + 0.22, true);
-  arm(A, A + 1, 1, A); // braço da frente
-  screen(A + 0.22, w - 0.3, false);
-  kb(A + 0.3, A - 0.8); kb(A - 0.8, A + 0.3); kb(A + 1.4, A + 0.3); kb(A + 0.3, A + 1.4);
-  // caneca e post-it
-  box(g, ox, oy, { u: A + 1.5, v: A + 0.15, z: H, w: 0.16, d: 0.16, h: 4, ...WHITE });
-  box(g, ox, oy, { u: A + 0.2, v: A + 1.6, z: H, w: 0.14, d: 0.14, h: 1, ...tone(K.yellow, '#c9a10f', '#e6be1a') });
+  arm(A, 0, 1, B); // braço de trás
+  arm(0, B, A, 1); // braço da esquerda
+  const hub = arm(A, B, 1, 1);
+  decal(g, ox, oy, hub, 'T', 0.2, 0.8, 0.2, 0.8, accent); // placa do setor no centro
+  arm(A + 1, B, A, 1); // braço da direita
+  arm(A, B + 1, 1, B); // braço da frente
+  // divisórias pretas (baixas) no eixo de cada barra
+  const div = { z: H, h: 3, ...BLACK };
+  box(g, ox, oy, { u: A + 0.46, v: 0, w: 0.08, d: B, ...div });
+  box(g, ox, oy, { u: 0, v: B + 0.46, w: A, d: 0.08, ...div });
+  box(g, ox, oy, { u: A + 0.46, v: B + 1, w: 0.08, d: B, ...div });
+  box(g, ox, oy, { u: A + 1, v: B + 0.46, w: A, d: 0.08, ...div });
+  box(g, ox, oy, { u: A + 0.46, v: B, w: 0.08, d: 1, ...div });
+  const kinds = SCREENS.slice();
+  const pick = (i) => kinds[(i + (p.sector ? p.sector.length : 0)) % kinds.length];
+  // lugar de cima-esquerda: monitor no braço de trás, notebook no braço da esquerda
+  monitor(g, ox, oy, A + 0.02, B - 0.9, H, 'L', pick(0));
+  laptop(g, ox, oy, A - 0.95, B + 0.06, H, 'R', pick(1));
+  // cima-direita: monitor no braço da direita, notebook no braço de trás
+  monitor(g, ox, oy, A + 1.9, B + 0.02, H, 'R', pick(2));
+  laptop(g, ox, oy, A + 0.55, B - 0.85, H, 'L', pick(3));
+  // baixo-direita: monitor no braço da frente, notebook no braço da direita
+  monitor(g, ox, oy, A + 0.52, B + 1.9, H, 'L', pick(4));
+  laptop(g, ox, oy, A + 1.5, B + 0.55, H, 'R', pick(5));
+  // baixo-esquerda: monitor no braço da esquerda, notebook no braço da frente
+  monitor(g, ox, oy, A - 0.9, B + 0.52, H, 'R', pick(6));
+  laptop(g, ox, oy, A + 0.05, B + 1.5, H, 'L', pick(7));
+  // caneca e post-its
+  box(g, ox, oy, { u: A + 0.15, v: B + 0.15, z: H, w: 0.16, d: 0.16, h: 4, ...WHITE });
+  box(g, ox, oy, { u: A - 0.5, v: B + 0.6, z: H, w: 0.14, d: 0.14, h: 1, ...tone(K.yellow, '#c9a10f', '#e6be1a') });
 }
 
 // ----- tabela de tipos -----
@@ -549,7 +596,7 @@ export function wallSprite(axis, len) {
   const T = 0.4;
   const w = axis === 'x' ? len : T;
   const d = axis === 'x' ? T : len;
-  const H = 36;
+  const H = 32;
   const cw = Math.ceil((w + d) * HX) + 40;
   const ch = Math.ceil((w + d) * HY) + H + 24;
   const ax = Math.ceil(d * HX) + 20;
@@ -560,13 +607,13 @@ export function wallSprite(axis, len) {
     const o = { u: 0, v: 0, z: 0, w, d, h: H, top: '#fff6e0', left: '#f2cb86', right: '#e7bd75' };
     box(g, ox, oy, o);
     // parte de baixo sólida e vidro em cima, com montantes a cada tile
-    decal(g, ox, oy, o, face, 0.0, 1.0, 12, 33, 'rgba(160,225,255,0.55)');
-    decal(g, ox, oy, o, face, 0.0, 1.0, 31, 34, '#ffe9b8');
+    decal(g, ox, oy, o, face, 0.0, 1.0, 10, 29, 'rgba(160,225,255,0.55)');
+    decal(g, ox, oy, o, face, 0.0, 1.0, 27, 30, '#ffe9b8');
     for (let i = 0; i <= Math.floor(span); i++) {
       const u = Math.min(0.985, i / span);
-      decal(g, ox, oy, o, face, u, Math.min(1, u + 0.02), 12, 33, '#ffe9b8');
+      decal(g, ox, oy, o, face, u, Math.min(1, u + 0.02), 10, 29, '#ffe9b8');
     }
-    decal(g, ox, oy, o, face, 0.06, 0.16, 20, 30, 'rgba(255,255,255,0.35)'); // reflexo
+    decal(g, ox, oy, o, face, 0.06, 0.16, 16, 26, 'rgba(255,255,255,0.35)'); // reflexo
   }, { doShade: false });
   s.axis = axis;
   sprites.set(key, s);
