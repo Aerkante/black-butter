@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1B1F2B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PosiGame</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%231B1F2B'/%3E%3Crect x='3' y='3' width='10' height='8' fill='%2346597F'/%3E%3Crect x='5' y='5' width='6' height='4' fill='%236BE38A'/%3E%3Crect x='6' y='11' width='4' height='2' fill='%2346597F'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/client/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" hidden>
+  <div class="hud-tl">
+    <div class="chip" id="hud-nick"></div>
+    <div class="bar" id="hud-hp"></div>
+    <div id="hud-team"></div>
+  </div>
+  <div class="hud-tc">
+    <div class="wave" id="hud-wave">ONDA 1</div>
+    <div class="srv"><span>SERVIDOR</span><div class="bar blue" id="hud-srv"></div></div>
+    <div class="hint" id="hud-hint"></div>
+  </div>
+  <div class="hud-tr">
+    <div class="score" id="hud-score">0</div>
+    <div class="combo" id="hud-combo"></div>
+    <div class="net" id="hud-net"></div>
+    <button class="mini" id="btn-leave" type="button">SAIR</button>
+  </div>
+  <div class="spawn" id="hud-spawn" hidden>SPAWN SEGURO</div>
+</div>
+
+<div id="joyzone" hidden></div>
+<div id="joy-base" hidden><div id="joy-knob"></div></div>
+<div id="touch" hidden>
+  <button id="btn-s2" class="tbtn small" type="button" aria-label="Habilidade 2"><b></b><i></i></button>
+  <button id="btn-ult" class="tbtn small ult" type="button" aria-label="Ultimate"><b></b><i></i></button>
+  <button id="btn-s1" class="tbtn small" type="button" aria-label="Habilidade 1"><b></b><i></i></button>
+  <button id="btn-atk" class="tbtn big" type="button" aria-label="Atacar">ATQ</button>
+</div>
+
+<section id="screen-nick" class="screen" hidden>
+  <div class="panel nick-panel">
+    <h1 class="logo"><span>Posi</span><em>Game</em></h1>
+    <p class="tag">COOP CONTRA BUGS · ONDAS INFINITAS</p>
+    <form id="nick-form" autocomplete="off">
+      <label for="nick-input">ESCOLHA SEU NICK</label>
+      <input id="nick-input" maxlength="12" minlength="3" spellcheck="false" autocapitalize="off" autocorrect="off" required>
+      <p class="notice">Seu nick fica salvo neste aparelho. Se você trocar de celular ou limpar o navegador, vai precisar criar um novo e recomeçar a pontuação.</p>
+      <label class="check"><input type="checkbox" id="nick-ok" required> Entendi</label>
+      <p class="error" id="nick-error" role="alert"></p>
+      <button class="btn go" type="submit">ENTRAR</button>
+    </form>
+  </div>
+</section>
+
+<section id="screen-home" class="screen" hidden>
+  <header class="home-top">
+    <h1 class="logo small"><span>Posi</span><em>Game</em></h1>
+    <div class="who"><b id="home-nick"></b><span id="home-stats"></span></div>
+    <div class="opts">
+      <label>Qualidade <select id="opt-quality"><option value="auto">Auto</option><option value="2">Alta</option><option value="1">Média</option><option value="0">Baixa</option></select></label>
+      <button class="mini" id="opt-sound" type="button">SOM</button>
+    </div>
+  </header>
+  <div class="home-grid">
+    <div class="panel col editor">
+      <h2>SEU BONECO</h2>
+      <div class="preview-wrap"><canvas id="preview" width="96" height="132"></canvas></div>
+      <div class="tabs" id="ed-tabs"></div>
+      <div class="ed-body" id="ed-body"></div>
+    </div>
+    <div class="panel col play">
+      <h2>CLASSE</h2>
+      <div id="class-list" class="class-list"></div>
+      <div class="class-info" id="class-info"></div>
+      <button class="btn go" id="btn-play" type="button">JOGAR</button>
+      <h2>PARTIDAS</h2>
+      <div id="match-list" class="match-list"></div>
+      <p class="error" id="home-error" role="alert"></p>
+    </div>
+    <div class="panel col rank">
+      <h2>RANKING</h2>
+      <div class="tabs" id="rank-tabs"></div>
+      <div id="rank-body" class="rank-body"></div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-over" class="screen over" hidden>
+  <div class="panel over-panel">
+    <h2 id="over-title">FIM DE JOGO</h2>
+    <p id="over-sub"></p>
+    <div id="over-board"></div>
+    <p class="restart" id="over-restart"></p>
+  </div>
+</section>
+
+<div id="toast" hidden></div>
+<div id="banner" hidden></div>
+<div id="rotate"><p>Gire o celular para o modo paisagem</p></div>
+
+<script type="module" src="/client/js/main.js"></script>
+</body>
+</html>
