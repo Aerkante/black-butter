@@ -27,7 +27,8 @@ Os jogadores abrem o endereço "Na rede" no navegador, escolhem um nick, montam 
 Dica: gere um QR code desse endereço e cole num cartaz no refeitório.
 
 Variáveis de ambiente opcionais: `PORT` (8080), `HOST` (0.0.0.0), `MAX_MATCHES` (8),
-`PLAYERS_PER_MATCH` (4), `INACTIVITY_MIN` (30), `DATA_DIR` (`posigame/data`).
+`PLAYERS_PER_MATCH` (4), `INACTIVITY_MIN` (30), `DATA_DIR` (`posigame/data`),
+`LOG_LEVEL` (`debug`) e `LOG_FILE` (`0` desliga o arquivo de log).
 
 ## Requisitos de rede (para conversar com a TI)
 
@@ -39,6 +40,36 @@ Variáveis de ambiente opcionais: `PORT` (8080), `HOST` (0.0.0.0), `MAX_MATCHES`
 - Pedir à TI um **IP fixo/reserva de DHCP** ou um nome de máquina estável, para o endereço (e o QR code) não mudarem.
 - Não expor o servidor para a internet.
 - Desativar a suspensão do computador no horário de uso; se ele dormir, o jogo cai para todos.
+
+## Log no terminal do host
+
+Tudo o que acontece aparece no terminal onde o servidor roda (colorido) e também é gravado em
+`data/logs/posigame-AAAA-MM-DD.log`, um arquivo por dia:
+
+```
+2026-09-29 12:31:02 INFO  [rede] página aberta por 192.168.0.34 (iOS)
+2026-09-29 12:31:02 INFO  [rede] conexão aberta: 192.168.0.34 (iOS); 3 online
+2026-09-29 12:31:09 INFO  [jogador] Duda entrou pela primeira vez (192.168.0.34, iOS)
+2026-09-29 12:31:15 INFO  [jogador] #1 Duda (PO) entrou: 1/4 na partida, onda 0
+2026-09-29 12:31:21 INFO  [onda] #1 onda 1 começou: 8 bugs, 1 jogador(es), servidor 400/400
+2026-09-29 12:31:24 DEBUG [combate] #1 Duda derrotou Bug +10 (combo 1)
+2026-09-29 12:31:58 INFO  [onda] #1 onda 1 limpa: bônus 75, placar do time 132, servidor 392/400
+2026-09-29 12:40:10 INFO  [partida] #1 FIM DE JOGO (o time inteiro caiu): onda 6, 2452 pontos | Duda 2452
+```
+
+Registra conexões e desconexões (endereço e tipo de aparelho), nicks novos e recusados, entradas e saídas de partida,
+quedas e reconexões, ondas, chefe, derrubadas, revives, habilidades, cada bug derrotado com os pontos, fim de jogo,
+recordes, gravação de dados, tentativas suspeitas (arquivos fora das pastas públicas, excesso de mensagens) e erros.
+`LOG_LEVEL=info` esconde o detalhe de combate (`debug`); `LOG_LEVEL=silent` desliga.
+
+## Celular
+
+- **Sem zoom:** pinça e toque duplo no mesmo lugar não dão zoom (também no iOS). Toques rápidos em lugares
+  diferentes continuam funcionando normalmente.
+- **Menu em abas** (Boneco, Classe, Ranking) com botão JOGAR sempre à mão, botões grandes (mín. 44 px) e sem rolagem lateral.
+- **Controles de toque** que se ajustam à altura da tela: joystick flutuante na esquerda e botões de ataque e habilidades na direita.
+- **Tela cheia** (onde o navegador permite; no iPhone o botão some), tela sempre ligada durante a partida e vibração ao levar dano.
+- **SAIR** pede um segundo toque para confirmar. No modo retrato aparece o aviso para girar o celular, com um botão para sair da partida.
 
 ## Como jogar
 
@@ -85,7 +116,7 @@ filtro de palavrões e lista de nomes reservados.
   estiverem cheias, abre uma nova. Também dá para escolher uma partida na lista.
 - Entrar no meio: o jogador cai direto na onda em andamento.
 - Game over do time: mostra o resultado e **reinicia todos juntos** na onda 1, depois de 10 s.
-- Partida sem jogadores conectados **pausa** (custo zero). Após 30 min vazia, é encerrada e zerada.
+- Partida sem jogadores conectados **pausa** (custo zero). Se alguém entrar em até 30 min, a onda em andamento recomeça com o servidor recuperado (mín. 60%). Após 30 min vazia, é encerrada e zerada.
 - Quem cai da rede mantém o lugar por 45 s e volta para a mesma partida ao reconectar.
 
 ## LOD (celulares fracos)
