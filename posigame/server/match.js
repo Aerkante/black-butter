@@ -12,6 +12,7 @@ import {
   moveEntity,
   distToRect,
 } from '../shared/game.js';
+import { silentLogger } from './logger.js';
 
 const SAFE_ENEMY_SPAWN = 6.5; // distância mínima entre um portal e qualquer jogador
 const TELEGRAPH = 1.0; // aviso visual antes de o bug nascer
@@ -29,6 +30,7 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export class Match {
   constructor(id, opts = {}) {
     this.id = id;
+    this.logger = opts.log ?? silentLogger;
     this.capacity = opts.capacity ?? 4;
     this.rand = opts.rand ?? Math.random;
     this.hooks = opts.hooks ?? {};
@@ -37,6 +39,11 @@ export class Match {
     this.nextId = 1;
     this.emptySince = Date.now(); // relógio de parede: usado pela inatividade
     this.reset();
+  }
+
+  // log com o número da partida
+  L(level, tag, msg) {
+    this.logger[level](tag, `#${this.id} ${msg}`);
   }
 
   // ----- ciclo de vida -----
@@ -153,19 +160,42 @@ export class Match {
     this.serverMax();
     this.resetPlayerForRun(p);
     p.invuln = this.t + SPAWN_INVULN;
-    if (wasEmpty) this.emptySince = 0;
+    if (wasEmpty) {
+      this.emptySince = 0;
+      this.resume();
+    }
     this.events.push(['join', id]);
+    this.L('info', 'jogador', `${nick} (${CLASSES[p.cls].name}) entrou: ${this.connectedCount()}/${this.capacity} na partida, onda ${this.wave}`);
     return p;
+  }
+
+  // Partida pausada que volta a ter jogadores: recomeça a onda em andamento com o servidor
+  // recuperado, para ninguém entrar direto num jogo já perdido.
+  resume() {
+    if (this.state === 'over' || this.wave === 0) return;
+    this.enemies = [];
+    this.queue = [];
+    this.pickups = [];
+    this.combo = 0;
+    this.buffs = { dmgUntil: 0, freezeUntil: 0, hasteUntil: 0 };
+    this.wave = Math.max(0, this.wave - 1);
+    this.state = 'break';
+    this.stateT = 3;
+    this.server.hp = Math.max(this.server.hp, this.server.max * 0.6);
+    this.L('info', 'partida', `retomada: a onda ${this.wave + 1} recomeça, servidor em ${Math.round((this.server.hp / this.server.max) * 100)}%`);
   }
 
   // Reata a conexão de quem caiu da rede, recolocando no ponto seguro.
   reattach(p, conn) {
+    const wasEmpty = this.isEmpty;
     p.conn = conn;
     p.ghost = false;
     this.placeSafely(p);
     p.dx = p.dy = 0;
     p.atk = false;
     this.emptySince = 0;
+    if (wasEmpty) this.resume();
+    this.L('info', 'jogador', `${p.nick} reconectou e voltou ao ponto seguro`);
   }
 
   // Marca como fantasma (caiu da rede) ou remove de vez.
@@ -177,12 +207,14 @@ export class Match {
       p.dx = p.dy = 0;
       p.atk = false;
       if (this.connectedCount() === 0) this.emptySince = Date.now();
+      this.L('info', 'jogador', `${p.nick} caiu da rede; lugar reservado por ${Math.round(this.reconnectGraceMs / 1000)} s`);
     } else {
       this.removePlayer(p);
     }
   }
 
-  removePlayer(p) {
+  removePlayer(p, reason = 'saiu da partida') {
+    this.L('info', 'jogador', `${p.nick} ${reason}: ${p.score} pontos, ${p.kills} bugs, onda ${this.wave}`);
     this.finishRun(p);
     this.players.delete(p.id);
     this.events.push(['leave', p.id]);
@@ -222,6 +254,7 @@ export class Match {
     const def = CLASSES[p.cls].skills[n - 1];
     p.cd[key] = this.t + def.cd;
     CAST[p.cls][n - 1](this, p);
+    this.L('debug', 'combate', `${p.nick} usou ${def.name}`);
     this.events.push(['skill', p.id, n, round1(p.x), round1(p.y)]);
   }
 
@@ -231,14 +264,17 @@ export class Match {
     const now = Date.now();
     // fantasmas expiram pelo relógio de parede, mesmo com a partida pausada
     for (const p of [...this.players.values()]) {
-      if (p.ghost && now - p.ghostAt > this.reconnectGraceMs) this.removePlayer(p);
+      if (p.ghost && now - p.ghostAt > this.reconnectGraceMs) this.removePlayer(p, 'não voltou a tempo');
     }
     if (this.isEmpty) return; // partida pausada, sem custo de simulação
 
     this.t += dt;
     if (this.state === 'over') {
       this.stateT -= dt;
-      if (this.stateT <= 0) this.reset();
+      if (this.stateT <= 0) {
+        this.reset();
+        this.L('info', 'partida', `reiniciada com ${this.connectedCount()} jogador(es)`);
+      }
       return;
     }
 
@@ -294,6 +330,7 @@ export class Match {
     p.reviveProg = 0;
     p.invuln = this.t + 2;
     this.events.push(['rev', p.id]);
+    this.L('info', 'jogador', `${p.nick} foi revivido (vida ${p.hp}/${p.maxHp})`);
   }
 
   attack(p) {
@@ -384,6 +421,7 @@ export class Match {
     this.spawnT = 0.8;
     this.waveHurt = false;
     this.events.push(['wave', this.wave, this.queue.includes('boss') ? 1 : 0]);
+    this.L('info', 'onda', `onda ${this.wave} começou: ${this.queue.length} bugs${this.queue.includes('boss') ? ' + CHEFE Segfault' : ''}, ${this.connectedCount()} jogador(es), servidor ${Math.round(this.server.hp)}/${this.server.max}`);
   }
 
   endWave() {
@@ -402,6 +440,7 @@ export class Match {
     }
     this.healServer(this.server.max * 0.08);
     this.events.push(['clear', this.wave, bonus, this.waveHurt ? 0 : 1]);
+    this.L('info', 'onda', `onda ${this.wave} limpa: bônus ${bonus}${this.waveHurt ? '' : ' (perfeita)'}, placar do time ${this.teamScore}, servidor ${Math.round(this.server.hp)}/${this.server.max}`);
     for (const p of present) this.flush(p); // grava o progresso a cada onda
     this.state = 'break';
     this.stateT = BREAK_TIME;
@@ -544,6 +583,7 @@ export class Match {
             e.charging = 1.0;
             e.chargeT = 6;
             this.events.push(['charge', e.id]);
+            this.L('debug', 'combate', 'Segfault iniciou uma investida');
           }
           if (e.charging > 0) {
             e.charging -= dt;
@@ -592,6 +632,7 @@ export class Match {
   // Último recurso: bug preso por mais de 4 s volta a nascer num portal, para a onda nunca travar.
   unstick(e) {
     const portal = this.pickPortal() || MAP.portals[Math.floor(this.rand() * MAP.portals.length)];
+    this.L('warn', 'partida', `${e.def.name} ficou preso em (${e.x.toFixed(1)}, ${e.y.toFixed(1)}) e foi reposicionado num portal`);
     e.x = portal.x;
     e.y = portal.y;
     e.stuck = 0;
@@ -631,6 +672,7 @@ export class Match {
     }
     this.teamScore += pts;
     this.events.push(['kill', ENEMY_IDS.indexOf(e.type), round1(e.x), round1(e.y), pts, by ? by.id : 0]);
+    this.L('debug', 'combate', `${by ? by.nick : '?'} derrotou ${e.def.name} +${pts} (combo ${this.combo})${e.prio > this.t ? ' [prioridade x2]' : ''}`);
     if (e.type === 'mail') {
       for (let i = 0; i < 2; i++) {
         this.makeEnemy('minimail', e.x + (i ? 0.3 : -0.3), e.y + 0.2, 0);
@@ -656,12 +698,14 @@ export class Match {
     p.lastHit = this.t;
     this.waveHurt = true;
     this.events.push(['hurt', p.id]);
+    this.L('debug', 'combate', `${p.nick} levou ${Math.round(dmg)} de dano (vida ${Math.max(0, Math.round(p.hp))}/${p.maxHp})`);
     if (p.hp <= 0) {
       p.hp = 0;
       p.downed = true;
       p.reviveProg = 0;
       p.dx = p.dy = 0;
       this.events.push(['down', p.id]);
+      this.L('info', 'jogador', `${p.nick} foi derrubado na onda ${this.wave}`);
     }
   }
 
@@ -670,6 +714,7 @@ export class Match {
     this.server.hp -= dmg;
     this.waveHurt = true;
     this.events.push(['srv']);
+    this.L('debug', 'combate', `servidor levou ${Math.round(dmg)} de dano (${Math.max(0, Math.round(this.server.hp))}/${this.server.max})`);
     if (this.server.hp < 0) this.server.hp = 0;
   }
 
@@ -691,6 +736,7 @@ export class Match {
         if (k.type === 'pizza') p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3);
         else p.fx.speedUntil = this.t + 6;
         this.events.push(['pick', p.id, k.type === 'pizza' ? 0 : 1]);
+        this.L('debug', 'combate', `${p.nick} pegou ${k.type === 'pizza' ? 'pizza (+vida)' : 'café (velocidade)'}`);
         this.pickups.splice(i, 1);
         break;
       }
@@ -713,6 +759,7 @@ export class Match {
       .sort((a, b) => b.score - a.score);
     this.overInfo = { wave: this.wave, score: this.teamScore, reason: serverDown ? 'server' : 'team', board };
     this.events.push(['over', this.wave, this.teamScore, serverDown ? 1 : 0]);
+    this.L('info', 'partida', `FIM DE JOGO (${serverDown ? 'o servidor caiu' : 'o time inteiro caiu'}): onda ${this.wave}, ${this.teamScore} pontos | ${board.map((b) => `${b.nick} ${b.score}`).join(', ')}`);
     for (const p of present) this.finishRun(p);
     this.hooks.onTeamRecord?.({ score: this.teamScore, wave: this.wave, nicks: present.map((p) => p.nick) });
   }
@@ -889,6 +936,7 @@ const CAST = {
       else if (r < 0.75) m.buffs.freezeUntil = m.t + 2; // bom: congela
       else m.buffs.hasteUntil = m.t + 5; // ruim: bugs mais rápidos
       m.events.push(['scope', r < 0.5 ? 0 : r < 0.75 ? 1 : 2]);
+      m.L('debug', 'combate', `mudança de escopo de ${p.nick}: ${['dano do time +50%', 'bugs congelados', 'bugs mais rápidos (ruim!)'][r < 0.5 ? 0 : r < 0.75 ? 1 : 2]}`);
     },
     (m, p) => {
       m.buffs.freezeUntil = m.t + 4;
@@ -899,6 +947,7 @@ const CAST = {
         m.teamScore += bonus;
       }
       m.events.push(['review', bonus]);
+      m.L('debug', 'combate', `Sprint Review de ${p.nick}: +${bonus} pontos para cada jogador`);
     },
   ],
 };

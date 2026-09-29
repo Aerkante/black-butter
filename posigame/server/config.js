@@ -30,6 +30,11 @@ export const config = {
   bannedNicks: [],
   reservedNicks: ['admin', 'administrador', 'servidor', 'server', 'posigame', 'sistema', 'system', 'moderador'],
 
+  // log: silent | error | warn | info | debug (padrão: debug = mostra tudo)
+  logLevel: process.env.LOG_LEVEL || 'debug',
+  // grava também em arquivos diários em data/logs (LOG_FILE=0 desliga)
+  logFile: process.env.LOG_FILE !== '0',
+
   // ranking
   maxRuns: 20000,
   maxTeams: 1000,

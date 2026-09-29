@@ -5,6 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { validateLook } from '../shared/look.js';
 import { nickKey } from './nick.js';
+import { silentLogger } from './logger.js';
 
 const TOKEN_RE = /^[a-f0-9]{32}$/;
 const DAY = 24 * 3600 * 1000;
@@ -28,7 +29,8 @@ function startOf(range, now) {
 }
 
 export class Store {
-  constructor({ dir, maxRuns = 20000, maxTeams = 1000, reserveMs = 60 * DAY, now = () => Date.now() }) {
+  constructor({ dir, maxRuns = 20000, maxTeams = 1000, reserveMs = 60 * DAY, now = () => Date.now(), log = silentLogger }) {
+    this.log = log;
     this.dir = dir;
     this.file = path.join(dir, 'posigame.json');
     this.maxRuns = maxRuns;
@@ -51,16 +53,23 @@ export class Store {
       for (const p of data.players || []) this.players.set(nickKey(p.nick), p);
       this.runs = data.runs || [];
       this.teams = data.teams || [];
+      this.log.info('dados', `carregado ${this.file}: ${this.players.size} jogadores, ${this.runs.length} partidas registradas`);
     } catch (err) {
       const bad = `${this.file}.corrompido-${this.now()}`;
       fs.renameSync(this.file, bad);
-      console.error(`[store] arquivo corrompido, movido para ${bad}:`, err.message);
+      this.log.error('dados', `arquivo corrompido, movido para ${bad}: ${err.message}`);
     }
   }
 
   save() {
     if (this.timer) return;
-    this.timer = setTimeout(() => this.saveNow(), 2000);
+    this.timer = setTimeout(() => {
+      try {
+        this.saveNow();
+      } catch (err) {
+        this.log.error('dados', `falha ao salvar: ${err.message}`);
+      }
+    }, 2000);
     this.timer.unref?.();
   }
 
@@ -82,10 +91,11 @@ export class Store {
       const dir = path.join(this.dir, 'backup');
       fs.mkdirSync(dir, { recursive: true });
       fs.copyFileSync(this.file, path.join(dir, `posigame-${day}.json`));
+      this.log.info('dados', `backup diário gravado (posigame-${day}.json)`);
       const files = fs.readdirSync(dir).filter((f) => f.startsWith('posigame-')).sort();
       for (const f of files.slice(0, Math.max(0, files.length - 14))) fs.unlinkSync(path.join(dir, f));
     } catch (err) {
-      console.error('[store] falha no backup:', err.message);
+      this.log.error('dados', `falha no backup: ${err.message}`);
     }
   }
 
@@ -106,6 +116,7 @@ export class Store {
       const stale = this.now() - existing.lastSeen > this.reserveMs;
       if (!stale) return { ok: false, error: 'Esse nick já está em uso. Escolha outro.' };
       this.remove(existing.nick); // reserva expirada por inatividade
+      this.log.warn('jogador', `nick "${existing.nick}" estava inativo há mais de ${Math.round(this.reserveMs / DAY)} dias e foi liberado`);
     }
     if (this.byToken(token)) return { ok: false, error: 'Este aparelho já tem um nick.' };
     const player = {
@@ -120,6 +131,7 @@ export class Store {
     };
     this.players.set(nickKey(nick), player);
     this.save();
+    this.log.info('jogador', `novo nick registrado: ${nick} (${this.players.size} jogadores no total)`);
     return { ok: true, player };
   }
 
@@ -150,6 +162,7 @@ export class Store {
     p.classes[cls] = (p.classes[cls] || 0) + 1;
     if (score > p.best.score) p.best = { score, wave };
     else if (wave > p.best.wave && score === p.best.score) p.best.wave = wave;
+    this.log.info('ranking', `${p.nick} terminou: ${score} pontos, onda ${wave}, classe ${cls} (melhor pessoal ${p.best.score})`);
     if (score > 0) {
       this.runs.push({ n: p.nick, s: score, w: wave, c: cls, t: this.now() });
       if (this.runs.length > this.maxRuns) this.runs.splice(0, this.runs.length - this.maxRuns);
@@ -159,6 +172,7 @@ export class Store {
 
   recordTeam({ score, wave, nicks }) {
     if (score <= 0) return;
+    this.log.info('ranking', `recorde de time: ${score} pontos, onda ${wave} (${nicks.join(', ')})`);
     this.teams.push({ t: this.now(), s: score, w: wave, n: nicks });
     if (this.teams.length > this.maxTeams) this.teams.splice(0, this.teams.length - this.maxTeams);
     this.save();
@@ -192,12 +206,14 @@ export class Store {
   remove(nick) {
     const k = nickKey(nick);
     if (!this.players.delete(k)) return false;
+    this.log.warn('dados', `jogador removido: ${nick}`);
     this.runs = this.runs.filter((r) => nickKey(r.n) !== k);
     this.save();
     return true;
   }
 
   resetRanking() {
+    this.log.warn('dados', 'ranking zerado');
     this.runs = [];
     this.teams = [];
     for (const p of this.players.values()) {

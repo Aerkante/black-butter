@@ -2,9 +2,11 @@
 // tick de simulação, envio de snapshots e encerramento de partidas vazias.
 import { TICK_DT, SNAP_EVERY, CLASSES } from '../shared/game.js';
 import { Match } from './match.js';
+import { silentLogger } from './logger.js';
 
 export class Matchmaker {
-  constructor({ config, store, now = () => Date.now() }) {
+  constructor({ config, store, now = () => Date.now(), log = silentLogger }) {
+    this.log = log;
     this.config = config;
     this.store = store;
     this.now = now;
@@ -33,8 +35,10 @@ export class Matchmaker {
       capacity: this.config.playersPerMatch,
       hooks: this.hooks(),
       reconnectGraceMs: this.config.reconnectGraceMs,
+      log: this.log,
     });
     this.matches.set(id, m);
+    this.log.info('partida', `#${id} criada (${m.capacity} vagas); partidas abertas: ${this.matches.size}/${this.config.maxMatches}`);
     return m;
   }
 
@@ -73,6 +77,7 @@ export class Matchmaker {
     const m = this.pick(matchId);
     if (!m) {
       const chosen = matchId && this.matches.get(matchId);
+      this.log.warn('partida', `${session.nick} não conseguiu entrar: ${chosen ? `partida #${matchId} cheia` : 'servidor cheio'}`);
       return { error: chosen ? 'Essa partida está cheia.' : 'Servidor cheio. Tente de novo em instantes.' };
     }
     const p = m.addPlayer({
@@ -96,10 +101,17 @@ export class Matchmaker {
     this.last = performance.now();
     this.timer = setInterval(() => this.loop(), 25);
     this.timer.unref?.();
+    // resumo periódico para o host ver que está tudo vivo
+    this.status = setInterval(() => {
+      const list = this.list();
+      this.log.info('servidor', `status: ${this.totalPlayers()} jogador(es) em ${list.length} partida(s)${list.map((m) => ` | #${m.id} ${m.players}/${m.capacity} onda ${m.wave}`).join('')}`);
+    }, 5 * 60 * 1000);
+    this.status.unref?.();
   }
 
   stop() {
     if (this.timer) clearInterval(this.timer);
+    if (this.status) clearInterval(this.status);
     this.timer = null;
   }
 
@@ -122,12 +134,12 @@ export class Matchmaker {
       try {
         m.update(TICK_DT);
       } catch (err) {
-        console.error(`[partida ${m.id}] erro na simulação:`, err);
-        this.destroy(m);
+        this.log.error('partida', `#${m.id} erro na simulação: ${err.stack || err}`);
+        this.destroy(m, 'erro na simulação');
         continue;
       }
       if (m.expired(now, this.config.inactivityMs)) {
-        this.destroy(m);
+        this.destroy(m, `vazia por ${Math.round(this.config.inactivityMs / 60000)} min`);
         continue;
       }
       if (this.tickCount % SNAP_EVERY === 0) {
@@ -148,7 +160,8 @@ export class Matchmaker {
     }
   }
 
-  destroy(m) {
+  destroy(m, reason = 'encerrada') {
+    this.log.info('partida', `#${m.id} encerrada (${reason}); onda alcançada ${m.wave}`);
     for (const p of [...m.players.values()]) {
       m.finishRun(p);
       p.conn?.matchDestroyed?.();

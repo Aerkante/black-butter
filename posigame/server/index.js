@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { Store, validToken } from './store.js';
 import { Matchmaker } from './matchmaker.js';
 import { validateNick } from './nick.js';
+import { createLogger, silentLogger, deviceOf } from './logger.js';
 import { validateLook } from '../shared/look.js';
 import { CLASSES } from '../shared/game.js';
 
@@ -29,13 +30,22 @@ const CSP =
 // Cria o servidor completo; devolve { server, store, mm, close } (útil para testes).
 export function createApp(overrides = {}) {
   const cfg = { ...config, ...overrides };
+  const log =
+    cfg.logLevel === 'silent'
+      ? silentLogger
+      : createLogger({
+          level: cfg.logLevel,
+          dir: cfg.logFile ? path.join(cfg.dataDir, 'logs') : null,
+          stream: cfg.logStream ?? process.stdout,
+        });
   const store = new Store({
     dir: cfg.dataDir,
     maxRuns: cfg.maxRuns,
     maxTeams: cfg.maxTeams,
     reserveMs: cfg.nickReserveMs,
+    log,
   });
-  const mm = new Matchmaker({ config: cfg, store });
+  const mm = new Matchmaker({ config: cfg, store, log });
   const sessions = new Set();
   const perIp = new Map();
   const started = Date.now();
@@ -56,8 +66,13 @@ export function createApp(overrides = {}) {
     } catch {
       return send(res, 400, 'Requisição inválida');
     }
-    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Método não permitido');
+    const ip = clientIp(req);
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      log.warn('rede', `${ip} ${req.method} ${url.pathname}: método não permitido`);
+      return send(res, 405, 'Método não permitido');
+    }
 
+    if (url.pathname.startsWith('/api/')) log.debug('rede', `${ip} GET ${url.pathname}${url.search}`);
     if (url.pathname === '/api/ranking') {
       const range = ['day', 'week', 'all'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : 'all';
       return json(res, store.ranking(range));
@@ -71,13 +86,28 @@ export function createApp(overrides = {}) {
       });
     }
 
-    let rel = url.pathname === '/' ? '/client/index.html' : decodeURIComponent(url.pathname);
+    if (url.pathname === '/') log.info('rede', `página aberta por ${ip} (${deviceOf(req.headers['user-agent'])})`);
+    let rel;
+    try {
+      rel = url.pathname === '/' ? '/client/index.html' : decodeURIComponent(url.pathname);
+    } catch {
+      return send(res, 400, 'Requisição inválida');
+    }
     const seg = rel.split('/')[1];
-    if (!roots[seg]) return send(res, 404, 'Não encontrado');
+    if (!roots[seg]) {
+      log.warn('rede', `${ip} pediu ${url.pathname}: não encontrado`);
+      return send(res, 404, 'Não encontrado');
+    }
     const file = path.normalize(path.join(cfg.root, rel));
-    if (!file.startsWith(roots[seg] + path.sep)) return send(res, 403, 'Acesso negado');
+    if (!file.startsWith(roots[seg] + path.sep)) {
+      log.warn('rede', `${ip} tentou acessar fora das pastas públicas: ${url.pathname}`);
+      return send(res, 403, 'Acesso negado');
+    }
     fs.readFile(file, (err, data) => {
-      if (err) return send(res, 404, 'Não encontrado');
+      if (err) {
+        log.warn('rede', `${ip} pediu ${url.pathname}: arquivo não existe`);
+        return send(res, 404, 'Não encontrado');
+      }
       send(res, 200, req.method === 'HEAD' ? '' : data, {
         'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
         'Cache-Control': 'no-cache',
@@ -88,28 +118,34 @@ export function createApp(overrides = {}) {
   const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 2048 });
 
   wss.on('connection', (ws, req) => {
-    const ip = req.socket.remoteAddress || '?';
+    const ip = clientIp(req);
     const n = perIp.get(ip) || 0;
     if (sessions.size >= cfg.maxConnections || n >= cfg.maxConnectionsPerIp) {
+      log.warn('rede', `conexão de ${ip} recusada (${sessions.size} online, ${n} deste endereço)`);
       ws.close(1013, 'lotado');
       return;
     }
     perIp.set(ip, n + 1);
-    const s = new Session(ws, ip);
+    const s = new Session(ws, ip, deviceOf(req.headers['user-agent']));
     sessions.add(s);
+    log.info('rede', `conexão aberta: ${ip} (${s.device}); ${sessions.size} online`);
     ws.on('message', (data) => s.onMessage(data));
-    ws.on('close', () => {
+    ws.on('close', (code) => {
       sessions.delete(s);
       perIp.set(ip, Math.max(0, (perIp.get(ip) || 1) - 1));
+      log.info('rede', `conexão encerrada: ${s.nick || ip} (código ${code}) após ${Math.round((Date.now() - s.since) / 1000)} s; ${sessions.size} online`);
       s.onClose();
     });
-    ws.on('error', () => {});
+    ws.on('error', (err) => log.warn('rede', `erro de socket de ${s.nick || ip}: ${err.message}`));
   });
 
   class Session {
-    constructor(ws, ip) {
+    constructor(ws, ip, device = '?') {
       this.ws = ws;
       this.ip = ip;
+      this.device = device;
+      this.since = Date.now();
+      this.lastLimitLog = 0;
       this.nick = null;
       this.look = null;
       this.record = null;
@@ -123,6 +159,7 @@ export function createApp(overrides = {}) {
     }
 
     fail(code, msg) {
+      log.warn('jogador', `${this.nick || this.ip}: ${msg} (${code})`);
       this.send({ t: 'err', code, msg });
     }
 
@@ -147,11 +184,17 @@ export function createApp(overrides = {}) {
       }
       if (!msg || typeof msg.t !== 'string') return;
       const hot = msg.t === 'in' || msg.t === 'sk';
-      if (!this.allow(hot ? 'in' : 'misc')) return;
+      if (!this.allow(hot ? 'in' : 'misc')) {
+        if (Date.now() - this.lastLimitLog > 10000) {
+          this.lastLimitLog = Date.now();
+          log.warn('rede', `${this.nick || this.ip} está enviando mensagens rápido demais (limite de taxa)`);
+        }
+        return;
+      }
       try {
         this.handle(msg);
       } catch (err) {
-        console.error('[sessão] erro ao tratar mensagem:', err);
+        log.error('rede', `erro ao tratar mensagem "${msg.t}" de ${this.nick || this.ip}: ${err.stack || err}`);
       }
     }
 
@@ -185,16 +228,26 @@ export function createApp(overrides = {}) {
       if (!validToken(msg.token)) return this.fail('token', 'Identificador inválido.');
       let rec = store.byToken(msg.token);
       if (!rec) {
-        if (msg.nick === undefined) return this.send({ t: 'need_nick' });
+        if (msg.nick === undefined) {
+          log.info('jogador', `aparelho novo em ${this.ip} (${this.device}): pedindo nick`);
+          return this.send({ t: 'need_nick' });
+        }
         const v = validateNick(msg.nick);
-        if (!v.ok) return this.fail('nick', v.error);
+        if (!v.ok) {
+          log.warn('jogador', `nick ${JSON.stringify(String(msg.nick).slice(0, 20))} recusado (${this.ip}): ${v.error}`);
+          return this.send({ t: 'err', code: 'nick', msg: v.error });
+        }
         const r = store.register(v.nick, msg.token, msg.look);
         if (!r.ok) return this.fail('nick', r.error);
         rec = r.player;
+        log.info('jogador', `${rec.nick} entrou pela primeira vez (${this.ip}, ${this.device})`);
+      } else {
+        log.info('jogador', `${rec.nick} identificado pelo aparelho (${this.ip}, ${this.device})`);
       }
       // uma conexão por nick: a mais nova substitui a anterior
       for (const o of sessions) {
         if (o !== this && o.nick === rec.nick) {
+          log.info('jogador', `${rec.nick} abriu o jogo em outro aparelho; a conexão anterior (${o.ip}) foi encerrada`);
           o.send({ t: 'kicked', msg: 'Você entrou em outro aparelho.' });
           o.detach();
           o.ws.close(4001, 'substituído');
@@ -226,6 +279,7 @@ export function createApp(overrides = {}) {
         this.match.events.push(['join', this.player.id]); // força reenvio do elenco
       }
       this.send({ t: 'look', look: this.look });
+      log.debug('jogador', `${this.nick} mudou o visual`);
     }
 
     join(msg) {
@@ -245,7 +299,7 @@ export function createApp(overrides = {}) {
 
     leave() {
       if (!this.player) return;
-      this.match.removePlayer(this.player);
+      this.match.removePlayer(this.player, 'saiu da partida');
       this.detach();
       this.send({ t: 'left', stats: store.stats(this.nick) });
     }
@@ -270,16 +324,27 @@ export function createApp(overrides = {}) {
   }
 
   mm.start();
+  log.debug('servidor', `configuração: ${cfg.maxMatches} partidas, ${cfg.playersPerMatch} jogadores por partida, inatividade ${Math.round(cfg.inactivityMs / 60000)} min, nível de log ${cfg.logLevel}`);
 
   const close = () =>
     new Promise((resolve) => {
       mm.stop();
+      log.info('servidor', 'encerrando: salvando ranking e fechando conexões');
       store.saveNow();
       for (const s of sessions) s.ws.terminate();
-      wss.close(() => server.close(() => resolve()));
+      wss.close(() =>
+        server.close(() => {
+          log.close();
+          resolve();
+        }),
+      );
     });
 
-  return { server, store, mm, cfg, close, sessions };
+  return { server, store, mm, cfg, close, sessions, log };
+}
+
+function clientIp(req) {
+  return (req.socket.remoteAddress || '?').replace(/^::ffff:/, '');
 }
 
 function lanAddresses() {
@@ -293,17 +358,33 @@ function lanAddresses() {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname);
 if (isMain) {
   const app = createApp();
+  app.server.on('error', (err) => {
+    app.log.error('servidor', err.code === 'EADDRINUSE' ? `a porta ${config.port} já está em uso (use PORT=outra)` : `erro no servidor: ${err.message}`);
+    process.exit(1);
+  });
   app.server.listen(config.port, config.host, () => {
     console.log('\n  PosiGame no ar!\n');
-    console.log(`  Neste computador:  http://localhost:${config.port}`);
+    console.log(`  Neste computador:    http://localhost:${config.port}`);
     for (const ip of lanAddresses()) console.log(`  Na rede (celulares): http://${ip}:${config.port}`);
-    console.log(`\n  Partidas: até ${config.maxMatches} com ${config.playersPerMatch} jogadores. Ctrl+C para parar.\n`);
+    console.log(`\n  Partidas: até ${config.maxMatches} com ${config.playersPerMatch} jogadores. Ctrl+C para parar.`);
+    console.log(`  Log: tudo aparece aqui${config.logFile ? ` e em ${path.join(config.dataDir, 'logs')}` : ''} (LOG_LEVEL=info para reduzir).\n`);
+    app.log.info('servidor', `iniciado na porta ${config.port} (${lanAddresses().join(', ') || 'sem rede'})`);
   });
-  const stop = async () => {
-    console.log('\nSalvando ranking e encerrando...');
+  const stop = async (sig) => {
+    app.log.info('servidor', `sinal ${sig} recebido`);
     await app.close();
     process.exit(0);
   };
-  process.on('SIGINT', stop);
-  process.on('SIGTERM', stop);
+  process.on('SIGINT', () => stop('SIGINT'));
+  process.on('SIGTERM', () => stop('SIGTERM'));
+  process.on('uncaughtException', (err) => {
+    app.log.error('servidor', `erro fatal: ${err.stack || err}`);
+    try {
+      app.store.saveNow();
+    } catch {
+      /* já registrado acima */
+    }
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (err) => app.log.error('servidor', `promessa rejeitada: ${err?.stack || err}`));
 }

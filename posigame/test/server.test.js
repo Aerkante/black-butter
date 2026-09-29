@@ -11,7 +11,7 @@ const tok = (c) => c.repeat(32);
 
 async function boot(overrides = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'posigame-srv-'));
-  const app = createApp({ dataDir, port: 0, playersPerMatch: 2, ...overrides });
+  const app = createApp({ dataDir, port: 0, playersPerMatch: 2, logLevel: 'silent', ...overrides });
   await new Promise((r) => app.server.listen(0, '127.0.0.1', r));
   app.port = app.server.address().port;
   return app;
@@ -252,6 +252,45 @@ test('mensagem gigante ou lixo não derruba o servidor', async () => {
     await b.hello(tok('b'), 'Beto');
     await b.next((m) => m.t === 'welcome');
     b.close();
+  } finally {
+    await app.close();
+  }
+});
+
+test('log no terminal do host registra conexões, jogadores, partidas e combate', async () => {
+  const lines = [];
+  const logStream = { write: (l) => lines.push(l.replace(/\n$/, '')) };
+  const app = await boot({ logLevel: 'debug', logStream, logFile: false });
+  try {
+    const a = new Client(app.port);
+    await a.hello(tok('a'));
+    await a.next((m) => m.t === 'need_nick');
+    a.send({ t: 'hello', token: tok('a'), nick: 'p0rr4' });
+    await a.next((m) => m.t === 'err');
+    a.send({ t: 'hello', token: tok('a'), nick: 'Ana' });
+    await a.next((m) => m.t === 'welcome');
+    a.send({ t: 'join', cls: 'po' });
+    const j = await a.next((m) => m.t === 'joined');
+    const match = app.mm.matches.get(j.match);
+    a.send({ t: 'sk', n: 1 });
+    match.hurtPlayer(match.players.get(j.you), 0); // sem efeito, só garante que não quebra
+    await new Promise((r) => setTimeout(r, 150));
+    a.send({ t: 'leave' });
+    await a.next((m) => m.t === 'left');
+    a.close();
+    await a.closed;
+    await new Promise((r) => setTimeout(r, 50));
+    const all = lines.join('\n');
+    assert.match(all, /INFO {2}\[rede\] conexão aberta: 127\.0\.0\.1/);
+    assert.match(all, /\[jogador\] aparelho novo em 127\.0\.0\.1/);
+    assert.match(all, /AVISO \[jogador\] nick "p0rr4" recusado/);
+    assert.match(all, /\[jogador\] Ana entrou pela primeira vez/);
+    assert.match(all, /\[partida\] #1 criada/);
+    assert.match(all, /\[jogador\] #1 Ana \(PO\) entrou: 1\/2 na partida/);
+    assert.match(all, /DEBUG \[combate\] #1 Ana usou Priorizar/);
+    assert.match(all, /\[jogador\] #1 Ana saiu da partida/);
+    assert.match(all, /\[rede\] conexão encerrada: Ana/);
+    assert.match(all, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /m, 'cada linha começa com data e hora');
   } finally {
     await app.close();
   }

@@ -311,3 +311,32 @@ test('bug preso por muito tempo volta a nascer num portal', () => {
   assert.equal(e.spawning, true);
   assert.equal(e.stuck, 0);
 });
+
+test('partida pausada retoma com a onda reiniciada e o servidor recuperado', () => {
+  const { m } = mk();
+  const a = add(m, 'Ana');
+  a.atk = false;
+  run(m, 12);
+  assert.ok(m.wave >= 1);
+  const w = m.wave;
+  m.server.hp = 10;
+  m.makeEnemy('bug', 3, 3, 0);
+  m.disconnect(a, { keep: true });
+  assert.ok(m.isEmpty);
+  const b = add(m, 'Beto');
+  assert.equal(m.enemies.length, 0, 'inimigos antigos removidos');
+  assert.ok(m.server.hp >= m.server.max * 0.6, 'servidor recuperado');
+  assert.equal(m.wave, w - 1, 'a onda em andamento recomeça');
+  assert.equal(m.state, 'break');
+  assert.ok(b.invuln > m.t);
+});
+
+test('fantasma que reconecta numa partida pausada também retoma', () => {
+  const { m } = mk();
+  const a = add(m, 'Ana');
+  run(m, 12);
+  m.server.hp = 5;
+  m.disconnect(a, { keep: true });
+  m.reattach(a, conn());
+  assert.ok(m.server.hp >= m.server.max * 0.6);
+});
