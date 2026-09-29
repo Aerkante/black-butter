@@ -1,5 +1,6 @@
 // Sprites em pixel art desenhados por código (nenhuma imagem para baixar).
 // Cada quadro é desenhado uma vez num canvas pequeno e reutilizado (cache).
+import { finish, makeCanvas as make, rect as r } from './px.js';
 import {
   SKIN,
   HAIR_COLORS,
@@ -12,24 +13,10 @@ import {
 
 const PAD_X = 2;
 const PAD_T = 4;
-const CW = 12; // largura do canvas do personagem (8 + 2*2)
+const CW = 14; // largura do canvas do personagem (8 + margem para braço estendido e contorno)
 const CH = 22; // altura (16 + topo 4 + base 2)
 
 const cache = new Map();
-
-function make(w, h) {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  const g = c.getContext('2d');
-  g.imageSmoothingEnabled = false;
-  return [c, g];
-}
-
-const r = (g, color, x, y, w, h) => {
-  g.fillStyle = color;
-  g.fillRect(x, y, w, h);
-};
 
 // ----- personagem -----
 
@@ -170,6 +157,7 @@ export function characterFrame(look, poseName) {
     g.fillRect(0, 0, CW, CH);
     g.globalCompositeOperation = 'source-over';
   }
+  finish(c);
   let out = c;
   let w = CW;
   let h = CH;
@@ -252,31 +240,40 @@ const ENEMY_DRAW = {
   },
 };
 
+function enemyName(type) {
+  return type === 'boss' ? 'bug' : type === 'minimail' ? 'mail' : type;
+}
+
+function enemyRaw(type, f, tint) {
+  const [c, g] = make(16, 14);
+  g.translate(1, 1);
+  ENEMY_DRAW[enemyName(type)](g, f ? 1 : 0);
+  g.translate(-1, -1);
+  if (tint) {
+    g.globalCompositeOperation = 'source-atop';
+    g.globalAlpha = 0.4;
+    g.fillStyle = tint;
+    g.fillRect(0, 0, 16, 14);
+  }
+  return c;
+}
+
 export function enemyFrame(type, f) {
-  const name = type === 'boss' ? 'bug' : type === 'minimail' ? 'mail' : type;
+  const name = enemyName(type);
   const key = `e|${name}|${f}`;
   let cached = cache.get(key);
   if (cached) return cached;
-  const [c, g] = make(14, 12);
-  ENEMY_DRAW[name](g, f ? 1 : 0);
-  cached = { canvas: c, w: 14, h: 12, ax: 7, ay: 10 };
+  cached = { canvas: finish(enemyRaw(type, f)), w: 16, h: 14, ax: 8, ay: 11 };
   cache.set(key, cached);
   return cached;
 }
 
-// Cor de uma silhueta, usada para o chefe (bug maior, roxo-avermelhado).
+// Versão colorida (congelado = azul, dano = branco, chefe = laranja), com contorno próprio.
 export function tintedEnemy(type, f, color) {
-  const key = `t|${type}|${f}|${color}`;
+  const key = `t|${enemyName(type)}|${f}|${color}`;
   let cached = cache.get(key);
   if (cached) return cached;
-  const base = enemyFrame(type, f);
-  const [c, g] = make(base.w, base.h);
-  g.drawImage(base.canvas, 0, 0);
-  g.globalCompositeOperation = 'source-atop';
-  g.fillStyle = color;
-  g.globalAlpha = 0.35;
-  g.fillRect(0, 0, base.w, base.h);
-  cached = { ...base, canvas: c };
+  cached = { canvas: finish(enemyRaw(type, f, color)), w: 16, h: 14, ax: 8, ay: 11 };
   cache.set(key, cached);
   return cached;
 }
@@ -302,7 +299,7 @@ export function pickupFrame(kind) {
     r(g, '#F7F3E8', 7, 4, 1, 3);
     r(g, '#8FA3C7', 1, 8, 7, 1);
   }
-  f = { canvas: c, w: 10, h: 10, ax: 5, ay: 9 };
+  f = { canvas: finish(c), w: 10, h: 10, ax: 5, ay: 9 };
   cache.set(key, f);
   return f;
 }
