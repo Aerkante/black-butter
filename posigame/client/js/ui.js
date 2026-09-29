@@ -1,5 +1,5 @@
 // Telas em DOM: nick, menu inicial (editor, classe, partidas, ranking), HUD e fim de jogo.
-import { CLASSES, CLASS_IDS, PICKUP_TYPES } from '/shared/game.js';
+import { CLASSES, CLASS_IDS, PICKUP_TYPES, ENEMIES, ENEMY_IDS, SECTORS, MAP } from '/shared/game.js';
 import { pickTip } from '/shared/tips.js';
 import {
   BODY_NAMES,
@@ -16,7 +16,7 @@ import {
   defaultLook,
   randomLook,
 } from '/shared/look.js';
-import { characterFrame } from './sprites.js';
+import { characterFrame, enemyFrame, pickupFrame } from './sprites.js';
 import { sfx, isMuted, setMuted } from './sfx.js';
 import * as music from './music.js';
 
@@ -50,6 +50,7 @@ export class UI {
     this.buildNick();
     this.buildHome();
     this.buildHud();
+    this.buildGuide();
     this.previewLoop();
   }
 
@@ -227,6 +228,57 @@ export class UI {
       });
       tabs.append(b);
     }
+  }
+
+  // Guia: inimigos, power-ups e setores, com os mesmos sprites do jogo
+  buildGuide() {
+    const sprite = (fr, scale = 3) => {
+      const c = el('canvas', { width: 54, height: 48 });
+      const g = c.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.drawImage(fr.canvas, Math.round(27 - (fr.w * scale) / 2), Math.round(46 - fr.ay * scale), fr.w * scale, fr.h * scale);
+      return c;
+    };
+    const enemies = $('guide-enemies');
+    for (const id of ENEMY_IDS) {
+      const e = ENEMIES[id];
+      enemies.append(
+        el(
+          'div',
+          { class: 'guide-row' },
+          sprite(enemyFrame(id, 0), id === 'boss' ? 3 : id === 'minimail' ? 3 : 3),
+          el(
+            'div',
+            { class: 'txt' },
+            el('b', {}, e.name),
+            el('br'),
+            e.desc,
+            el('span', { class: 'st' }, `Vida ${e.hp} · Velocidade ${e.speed} · Dano ${e.dmg} · ${e.pts} pontos · ${id === 'minimail' ? 'nasce do E-mail' : `desde a onda ${e.from}`}`),
+          ),
+        ),
+      );
+    }
+    const pk = $('guide-pickups');
+    PICKUP_TYPES.forEach((t, i) => {
+      const rarity = t.w >= 20 ? 'comum' : t.w >= 10 ? 'incomum' : 'raro';
+      pk.append(
+        el(
+          'div',
+          { class: 'guide-row' },
+          sprite(pickupFrame(i), 3),
+          el('div', { class: 'txt' }, el('b', {}, t.name), el('span', { class: `tag ${rarity}` }, rarity.toUpperCase()), el('br'), t.desc),
+        ),
+      );
+    });
+    pk.append(el('p', { class: 'tip' }, 'Os bugs soltam power-ups ao cair (o chefe solta 3). Passe por cima para pegar; eles piscam quando estão acabando.'));
+    const sec = $('guide-sectors');
+    for (const s of Object.values(SECTORS)) {
+      sec.append(el('div', { class: 'guide-row' }, el('div', { class: 'sw', style: `background:${s.color}` }, s.short), el('div', { class: 'txt' }, el('b', {}, s.name), el('br'), s.where)));
+    }
+    for (const r of MAP.rooms) {
+      sec.append(el('div', { class: 'guide-row' }, el('div', { class: 'sw', style: `background:${r.plate}` }, r.name.slice(0, 9)), el('div', { class: 'txt' }, el('b', {}, `Sala: ${r.name.charAt(0)}${r.name.slice(1).toLowerCase()}`), el('br'), 'Divisórias de vidro e portas: os bugs também dão a volta pelas portas.')));
+    }
+    sec.append(el('div', { class: 'guide-row' }, el('div', { class: 'sw', style: 'background:#7FE3FF' }, 'PONTO'), el('div', { class: 'txt' }, el('b', {}, 'Totem de ponto'), el('br'), 'Na parede da copa, do lado direito depois da porta.')));
   }
 
   setHomeTab(tab) {

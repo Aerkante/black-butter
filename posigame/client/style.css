@@ -169,7 +169,8 @@ body.playing #rotate.on { display: flex; }
   #screen-home .col { display: none; overflow: visible; }
   #screen-home[data-tab='editor'] .col.editor,
   #screen-home[data-tab='play'] .col.play,
-  #screen-home[data-tab='rank'] .col.rank { display: block; }
+  #screen-home[data-tab='rank'] .col.rank,
+  #screen-home[data-tab='guide'] .col.guide { display: block; }
   #btn-play { display: none; }
   #home-nav { display: flex; flex: 0 0 auto; gap: 6px; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--ink); border-top: 4px solid var(--carpet2); }
   #home-nav button { flex: 1; min-height: 46px; font-size: 20px; padding: 0 4px; border-width: 3px; }
@@ -247,3 +248,18 @@ body.playing #rotate.on { display: flex; }
   .home-grid { max-width: 1180px; }
   html, body { font-size: 24px; }
 }
+
+/* guia de inimigos, power-ups e setores */
+.guide-row { display: flex; gap: 10px; align-items: center; background: var(--ink); border: 3px solid var(--carpet2); padding: 6px 8px; margin-bottom: 6px; }
+.guide-row canvas { image-rendering: pixelated; flex: 0 0 auto; width: 54px; height: 48px; background: var(--carpet); border: 2px solid var(--carpet2); }
+.guide-row .sw { flex: 0 0 auto; width: 54px; height: 48px; border: 2px solid var(--carpet2); display: flex; align-items: center; justify-content: center; font-family: var(--px); font-size: 8px; color: var(--ink); text-align: center; }
+.guide-row .txt { min-width: 0; font-size: 20px; line-height: 1.05; }
+.guide-row .txt b { color: var(--yellow); font-weight: normal; font-size: 22px; }
+.guide-row .txt .st { display: block; color: var(--cyan); font-size: 18px; margin-top: 2px; }
+.guide-row .txt .tag { font-family: var(--px); font-size: 8px; padding: 2px 5px; margin-left: 6px; color: var(--ink); vertical-align: middle; }
+.tag.comum { background: var(--green); }
+.tag.incomum { background: var(--yellow); }
+.tag.raro { background: var(--pink); }
+#screen-home[data-tab='guide'] .col.guide h2:not(:first-child) { margin-top: 12px; }
+#home-nav button { min-width: 0; }
+@media (max-width: 460px) { #home-nav button { font-size: 16px; } #home-nav button.go { font-size: 11px; } }

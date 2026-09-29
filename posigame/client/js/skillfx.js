@@ -1,6 +1,6 @@
 // Efeitos visuais das habilidades, ataques básicos e power-ups.
 // Cada classe e cada poder tem um visual próprio, em pixel art (sem transparência borrada).
-import { CLASSES, ENEMY_IDS, PICKUP_TYPES } from '/shared/game.js';
+import { CLASSES, ENEMY_IDS, PICKUP_TYPES, MAP } from '/shared/game.js';
 import { ellipse, stripes, line, rect } from './px.js';
 import { project } from './scenery.js';
 
@@ -31,6 +31,8 @@ export function glyph(g, name, x, y, color, s = 1) {
 }
 const glyphW = (name, s = 1) => GLYPHS[name][0].length * s;
 const glyphH = (name, s = 1) => GLYPHS[name].length * s;
+
+const SRV = { x: MAP.server.x + MAP.server.w / 2, y: MAP.server.y + MAP.server.h / 2 }; // centro do servidor
 
 const K = {
   paper: '#FFF6E0',
@@ -145,15 +147,15 @@ export function spawnSkill(world, ev, now) {
       burst(world, x, y, [K.green, K.paper], 10, 3, now, { life: 0.5 });
       break;
     case 'ops2':
-      ring(world, 9, 9, K.cyan, 3, 0.7, now, { double: true, fill: 'rgba(43,200,255,0.22)' });
-      pop(world, 9, 9, 'star', K.cyan, now, { z: 44, gs: 2, life: 1.2, still: true });
-      burst(world, 9, 9, [K.cyan, K.paper], 16, 4, now, { life: 0.6, vz: 60 });
+      ring(world, SRV.x, SRV.y, K.cyan, 3, 0.7, now, { double: true, fill: 'rgba(43,200,255,0.22)' });
+      pop(world, SRV.x, SRV.y, 'star', K.cyan, now, { z: 44, gs: 2, life: 1.2, still: true });
+      burst(world, SRV.x, SRV.y, [K.cyan, K.paper], 16, 4, now, { life: 0.6, vz: 60 });
       flash(world, K.cyan, now, 0.12, 0.25);
       break;
     case 'ops3': {
       ring(world, x, y, K.green, 9, 0.9, now, { double: true, fill: 'rgba(61,255,139,0.18)' });
       ring(world, x, y, K.paper, 6, 0.7, now, { delay: 0.12 });
-      for (const p of playersNear(world, 9, 9, 99)) {
+      for (const p of playersNear(world, SRV.x, SRV.y, 99)) {
         for (let i = 0; i < 4; i++) pop(world, p.x + (i - 1.5) * 0.3, p.y, 'plus', i % 2 ? K.green : K.paper, now, { z: 50 - i * 4, vz: -20, life: 1.1, delay: i * 0.1, gs: 2 });
         pop(world, p.x, p.y, 'clock', K.green, now, { z: 34, vz: 8, life: 1.2, gs: 2 });
       }
@@ -258,8 +260,8 @@ export function spawnPickup(world, ev, now) {
       for (let i = 0; i < 5; i++) pop(world, pos.x + (i - 2) * 0.4, pos.y, 'star', K.yellow, now, { z: 26 + i * 3, gs: 2, life: 0.9, delay: i * 0.05 });
       break;
     case 'backup':
-      ring(world, 9, 9, K.green, 6, 0.8, now, { double: true, fill: 'rgba(61,255,139,0.18)' });
-      for (const p of playersNear(world, 9, 9, 99)) pop(world, p.x, p.y, 'plus', K.green, now, { z: 30, gs: 2, life: 1 });
+      ring(world, SRV.x, SRV.y, K.green, 6, 0.8, now, { double: true, fill: 'rgba(61,255,139,0.18)' });
+      for (const p of playersNear(world, SRV.x, SRV.y, 99)) pop(world, p.x, p.y, 'plus', K.green, now, { z: 30, gs: 2, life: 1 });
       break;
     default:
   }

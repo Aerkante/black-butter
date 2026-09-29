@@ -1,9 +1,9 @@
 // Renderizador isométrico 2:1 em canvas de baixa resolução, com escala inteira de pixels
 // (cada pixel lógico vira NxN pixels reais: imagem sempre nítida) e LOD por qualidade.
-import { MAP, CLASSES, ENEMIES, PICKUP_TYPES } from '/shared/game.js';
+import { MAP, CLASSES, ENEMIES, PICKUP_TYPES, SECTORS } from '/shared/game.js';
 import { characterFrame, enemyFrame, tintedEnemy, pickupFrame, poseFor, classIcon } from './sprites.js';
 import { ellipse, line, diamond, rect, makeCanvas } from './px.js';
-import { buildProps, buildStatic, project, OFF_X, OFF_Y } from './scenery.js';
+import { buildProps, buildStatic, project, OFF_X, OFF_Y, BOUNDS, propSprite, labelSprite, wallSprite } from './scenery.js';
 import { drawGround, drawAir, drawShot, drawDome, drawShield } from './skillfx.js';
 
 export const QUALITY = [
@@ -69,6 +69,40 @@ export class Renderer {
     if (!this.props) {
       this.props = buildProps();
       this.staticCache = buildStatic();
+      this.buildLists();
+    }
+  }
+
+  // Listas de móveis e pedaços de parede com a profundidade já calculada (feito uma vez)
+  buildLists() {
+    this.propList = [];
+    for (const p of MAP.props) {
+      const spr = propSprite(p);
+      if (!spr) continue;
+      const box = spr.kind === 'box';
+      const center = spr.kind === 'center';
+      const ax = center ? p.x + p.w / 2 : p.x;
+      const ay = center ? p.y + p.h / 2 : p.y;
+      const depth = box ? p.x + p.w / 2 + p.y + p.h / 2 + 0.2 : ax + ay;
+      this.propList.push({ p, spr, ax, ay, depth });
+      const sec = SECTORS[p.sector];
+      if (sec || p.label) {
+        const lab = labelSprite(sec ? sec.short : p.label, sec ? sec.color : p.color || '#7FE3FF');
+        this.propList.push({ label: lab, ax: p.x + p.w / 2, ay: p.y + p.h / 2, depth: 999, isLabel: true });
+      }
+    }
+    this.wallChunks = [];
+    for (const r of MAP.walls) {
+      const axis = r.w > r.h ? 'x' : 'y';
+      const total = axis === 'x' ? r.w : r.h;
+      for (let i = 0; i < total - 0.01; i += 2) {
+        const len = Math.min(2, total - i);
+        const x = axis === 'x' ? r.x + i : r.x;
+        const y = axis === 'x' ? r.y : r.y + i;
+        const w = axis === 'x' ? len : r.w;
+        const h = axis === 'x' ? r.h : len;
+        this.wallChunks.push({ x, y, sprite: wallSprite(axis, len), depth: x + w / 2 + y + h / 2 });
+      }
     }
   }
 
@@ -128,12 +162,12 @@ export class Renderer {
     const k = 1 - Math.exp(-dt * 7);
     this.cam.x += (focus[0] - this.cam.x) * k;
     this.cam.y += (focus[1] - 20 - this.cam.y) * k;
-    const minX = -296 + W / 2;
-    const maxX = 296 - W / 2;
-    const minY = -66 + H / 2;
-    const maxY = 304 - H / 2;
-    let cx = maxX < minX ? 0 : Math.min(maxX, Math.max(minX, this.cam.x));
-    let cy = maxY < minY ? 119 : Math.min(maxY, Math.max(minY, this.cam.y));
+    const minX = BOUNDS.minX + W / 2;
+    const maxX = BOUNDS.maxX - W / 2;
+    const minY = BOUNDS.minY + H / 2;
+    const maxY = BOUNDS.maxY - H / 2;
+    let cx = maxX < minX ? (BOUNDS.minX + BOUNDS.maxX) / 2 : Math.min(maxX, Math.max(minX, this.cam.x));
+    let cy = maxY < minY ? (BOUNDS.minY + BOUNDS.maxY) / 2 : Math.min(maxY, Math.max(minY, this.cam.y));
     if (now - world.shake < world.shakeDur && q.bars) {
       const k2 = 1 - (now - world.shake) / world.shakeDur;
       cx += Math.round((Math.random() - 0.5) * world.shakeAmp * k2);
@@ -155,18 +189,20 @@ export class Renderer {
     drawGround(this, world, view, ox, oy, now, q);
 
     const items = [];
-    const P = this.props;
-    for (const d of MAP.desks) {
-      items.push({ d: d.x + d.w / 2 + d.y + d.h / 2 + 0.2, f: () => this.blit(P.desk, ox, oy, d.x, d.y) });
-      items.push({ d: d.x + 1.1 + d.y + 1.9, f: () => this.blit(P.chair, ox, oy, d.x + 1, d.y + 1.75) });
+    const vis = (sx, sy, pad) => sx > -pad && sx < W + pad && sy > -pad && sy < H + pad;
+    // móveis fixos (só os que aparecem na tela entram na fila de desenho)
+    for (const p of this.propList) {
+      const [px, py] = project(p.ax, p.ay);
+      if (!vis(ox + px, oy + py, 130)) continue;
+      items.push({ d: p.depth, f: () => this.blitProp(p, ox, oy) });
+    }
+    for (const w of this.wallChunks) {
+      const [px, py] = project(w.x, w.y);
+      if (!vis(ox + px, oy + py, 90)) continue;
+      items.push({ d: w.depth, f: () => this.g.drawImage(w.sprite.canvas, Math.round(ox + px - w.sprite.ax), Math.round(oy + py - w.sprite.ay)) });
     }
     const S = MAP.server;
     items.push({ d: S.x + S.y + 1, f: () => this.drawServer(ox, oy, view, now, q) });
-    items.push({ d: MAP.coffee.x + MAP.coffee.y + 1, f: () => this.blit(P.coffee, ox, oy, MAP.coffee.x, MAP.coffee.y) });
-    items.push({ d: MAP.printer.x + MAP.printer.y + 1, f: () => this.blit(P.printer, ox, oy, MAP.printer.x, MAP.printer.y) });
-    for (const pl of MAP.plants) items.push({ d: pl.x + pl.y, f: () => this.blit(P.plant, ox, oy, pl.x, pl.y) });
-    for (const b of MAP.bins) items.push({ d: b.x + b.y, f: () => this.blit(P.bin, ox, oy, b.x, b.y) });
-    items.push({ d: MAP.cooler.x + MAP.cooler.y, f: () => this.blit(P.cooler, ox, oy, MAP.cooler.x, MAP.cooler.y) });
     for (const k2 of view.pickups) items.push({ d: k2.x + k2.y, f: () => this.drawPickup(k2, ox, oy, now) });
     for (const e of view.enemies) items.push({ d: e.x + e.y, f: () => this.drawEnemy(e, ox, oy, now, q) });
     for (const p of view.players) items.push({ d: p.x + p.y, f: () => this.drawPlayer(p, ox, oy, now, q) });
@@ -175,12 +211,18 @@ export class Renderer {
 
     drawAir(this, world, view, ox, oy, now, q);
     this.drawFx(world, ox, oy, now, q);
+    this.ox = ox;
+    this.oy = oy;
     this.drawOverlays(world, view, now);
   }
 
-  blit(prop, ox, oy, x, y) {
-    const [sx, sy] = project(x, y);
-    this.g.drawImage(prop.canvas, Math.round(ox + sx - prop.ax), Math.round(oy + sy - prop.ay));
+  blitProp(e, ox, oy) {
+    const [sx, sy] = project(e.ax, e.ay);
+    if (e.isLabel) {
+      this.g.drawImage(e.label.canvas, Math.round(ox + sx - e.label.ax), Math.round(oy + sy - 50));
+      return;
+    }
+    this.g.drawImage(e.spr.canvas, Math.round(ox + sx - e.spr.ax), Math.round(oy + sy - e.spr.ay));
   }
 
   drawServer(ox, oy, view, now, q) {
@@ -402,8 +444,96 @@ export class Renderer {
     }
   }
 
+  // Minimapa (planta do escritório) e seta apontando para o servidor quando ele sai da tela
+  drawMinimap(view, now) {
+    const g = this.g;
+    const s = this.W >= 560 ? 3 : 2;
+    const mw = MAP.w * s;
+    const mh = MAP.h * s;
+    const x0 = 6;
+    const y0 = this.H - mh - 6;
+    g.fillStyle = 'rgba(11,14,26,0.72)';
+    g.fillRect(x0 - 2, y0 - 2, mw + 4, mh + 4);
+    for (const r of MAP.rooms) {
+      g.fillStyle = `${r.plate}66`;
+      g.fillRect(x0 + r.x * s, y0 + r.y * s, r.w * s, r.h * s);
+    }
+    g.fillStyle = '#fff6e0';
+    for (const w of MAP.walls) g.fillRect(x0 + Math.round(w.x * s), y0 + Math.round(w.y * s), Math.max(1, Math.round(w.w * s)), Math.max(1, Math.round(w.h * s)));
+    for (const p of MAP.props) {
+      if (!p.solid || (p.t !== 'desk' && p.t !== 'table6' && p.t !== 'bigdesk')) continue;
+      g.fillStyle = SECTORS[p.sector]?.color || '#8fa3ff';
+      g.fillRect(x0 + Math.round(p.x * s), y0 + Math.round(p.y * s), Math.max(1, Math.round(p.w * s)), Math.max(1, Math.round(p.h * s)));
+    }
+    g.fillStyle = '#ff3b4e';
+    for (const p of MAP.portals) g.fillRect(x0 + Math.round(p.x * s), y0 + Math.round(p.y * s), 1, 1);
+    const S = MAP.server;
+    g.fillStyle = '#2bc8ff';
+    g.fillRect(x0 + Math.round(S.x * s) - 1, y0 + Math.round(S.y * s) - 1, s + 2, s + 2);
+    g.fillStyle = '#ffd426';
+    for (const k of view.pickups) g.fillRect(x0 + Math.round(k.x * s), y0 + Math.round(k.y * s), 1, 1);
+    g.fillStyle = '#ff5a6a';
+    for (const e of view.enemies) {
+      const big = e.type === 'boss' ? 3 : 1;
+      g.fillRect(x0 + Math.round(e.x * s) - (big > 1 ? 1 : 0), y0 + Math.round(e.y * s) - (big > 1 ? 1 : 0), big, big);
+    }
+    for (const p of view.players) {
+      if (p.isYou) {
+        if (Math.floor(now * 3) % 2) continue;
+        g.fillStyle = '#ffffff';
+        g.fillRect(x0 + Math.round(p.x * s) - 1, y0 + Math.round(p.y * s) - 1, 3, 3);
+      } else {
+        g.fillStyle = (CLASSES[p.cls] || CLASSES.dev).color;
+        g.fillRect(x0 + Math.round(p.x * s) - 1, y0 + Math.round(p.y * s) - 1, 2, 2);
+      }
+    }
+    g.fillStyle = '#3d50cf';
+    g.fillRect(x0 - 2, y0 - 2, mw + 4, 1);
+    g.fillRect(x0 - 2, y0 + mh + 1, mw + 4, 1);
+    g.fillRect(x0 - 2, y0 - 2, 1, mh + 4);
+    g.fillRect(x0 + mw + 1, y0 - 2, 1, mh + 4);
+  }
+
+  drawServerPointer(now) {
+    const g = this.g;
+    const S = MAP.server;
+    const [px, py] = project(S.x + S.w / 2, S.y + S.h / 2);
+    const sx = this.ox + px;
+    const sy = this.oy + py - 20;
+    const m = 14;
+    if (sx > m && sx < this.W - m && sy > 26 && sy < this.H - m) return;
+    const cx = this.W / 2;
+    const cy = this.H / 2;
+    const dx = sx - cx;
+    const dy = sy - cy;
+    const k = Math.min((this.W / 2 - m) / Math.abs(dx || 1e-6), (this.H / 2 - m - 10) / Math.abs(dy || 1e-6));
+    const ex = Math.round(cx + dx * k);
+    const ey = Math.round(cy + dy * k);
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const pulse = Math.floor(now * 4) % 2;
+    g.fillStyle = C.ink;
+    g.fillRect(ex - 6, ey - 6, 13, 13);
+    g.fillStyle = pulse ? C.cyan : '#7fe3ff';
+    g.fillRect(ex - 4, ey - 4, 9, 9);
+    // ponta da seta em pixels, apontando para o servidor
+    for (let i = 0; i < 4; i++) {
+      g.fillStyle = pulse ? C.cyan : '#7fe3ff';
+      g.fillRect(Math.round(ex + ux * (8 + i * 2)) - 1, Math.round(ey + uy * (8 + i * 2)) - 1, 3 - Math.floor(i / 2), 3 - Math.floor(i / 2));
+    }
+    g.font = `8px ${PX}`;
+    g.textAlign = 'center';
+    g.fillStyle = C.ink;
+    g.fillText('SERV', ex + 1, ey + 19);
+    g.fillStyle = C.cyan;
+    g.fillText('SERV', ex, ey + 18);
+  }
+
   drawOverlays(world, view, now) {
     const g = this.g;
+    this.drawServerPointer(now);
+    this.drawMinimap(view, now);
     const W = this.W;
     const H = this.H;
     const fl = world.flashes[0];
