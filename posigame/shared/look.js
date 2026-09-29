@@ -6,13 +6,13 @@ export const BODY_NAMES = ['Corpo A', 'Corpo B'];
 export const SKIN = ['#F6D5B8', '#E7B48F', '#C68642', '#A0673F', '#8D5A3B', '#5B3A29'];
 
 export const HAIR_COLORS = [
-  { name: 'Preto', hex: '#1B1F2B' },
+  { name: 'Preto', hex: '#232a55' },
   { name: 'Castanho', hex: '#5B3A29' },
-  { name: 'Loiro', hex: '#E8C56B' },
-  { name: 'Ruivo', hex: '#C2542D' },
-  { name: 'Grisalho', hex: '#A9A9B3' },
-  { name: 'Branco', hex: '#F7F3E8' },
-  { name: 'Rosa', hex: '#FF7EB6' },
+  { name: 'Loiro', hex: '#ffd84d' },
+  { name: 'Ruivo', hex: '#e0501e' },
+  { name: 'Grisalho', hex: '#c4c4d4' },
+  { name: 'Branco', hex: '#fff6e0' },
+  { name: 'Rosa', hex: '#ff4fa3' },
 ];
 
 // Peças de cabelo e roupa são por corpo; óculos, mochila e crachá são unissex.
@@ -30,14 +30,14 @@ export const OUTFITS = [
 export const JALECO_INDEX = 3;
 
 export const OUTFIT_COLORS = [
-  '#4FC3F7',
-  '#FFD25A',
-  '#FF7EB6',
-  '#E5484D',
-  '#6BE38A',
-  '#F7F3E8',
-  '#FF9E44',
-  '#8FA3C7',
+  '#2bc8ff',
+  '#ffd426',
+  '#ff4fa3',
+  '#ff3b4e',
+  '#3dff8b',
+  '#fff6e0',
+  '#ff8a1f',
+  '#8fa3ff',
 ];
 
 export const BOTTOMS = [
@@ -45,7 +45,7 @@ export const BOTTOMS = [
   ['Calça', 'Saia'],
 ];
 
-export const BOTTOM_COLORS = ['#2F3E5C', '#1B1F2B', '#7A4B2A', '#46597F', '#8FA3C7', '#2E9E5B'];
+export const BOTTOM_COLORS = ['#2b3a9e', '#0b0e1a', '#a8531f', '#3b4dc4', '#8fa3ff', '#1fcb6a'];
 
 export const JALECO_COLOR = '#1F2A5A';
 

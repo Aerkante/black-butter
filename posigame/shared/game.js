@@ -96,7 +96,7 @@ export const CLASSES = {
   dev: {
     name: 'Dev',
     tag: 'DEV',
-    color: '#4FC3F7',
+    color: '#2bc8ff',
     desc: 'Dano à distância constante.',
     hp: 100,
     speed: 4.2,
@@ -110,57 +110,57 @@ export const CLASSES = {
   qa: {
     name: 'QA',
     tag: 'QA',
-    color: '#FFD25A',
+    color: '#ffd426',
     desc: 'Marca bugs para todos causarem mais dano.',
     hp: 90,
     speed: 4.4,
-    atk: { range: 6, dmg: 8, cd: 0.5 },
+    atk: { range: 6, dmg: 10, cd: 0.5 },
     skills: [
-      { name: 'Caso de teste', short: 'TESTE', cd: 10, desc: 'Marca todos os bugs por perto.' },
-      { name: 'Regressão', short: 'LENTO', cd: 12, desc: 'Deixa os bugs lentos.' },
-      { name: 'Bug bash', short: 'ULT', cd: 50, desc: 'Dano e marca em todos os bugs.' },
+      { name: 'Caso de teste', short: 'TESTE', cd: 10, desc: 'Marca e fere todos os bugs por perto.' },
+      { name: 'Regressão', short: 'LENTO', cd: 12, desc: 'Dano em área e deixa os bugs lentos.' },
+      { name: 'Bug bash', short: 'ULT', cd: 50, desc: 'Muito dano e marca em todos os bugs.' },
     ],
   },
   ops: {
     name: 'DevOps',
     tag: 'OPS',
-    color: '#6BE38A',
-    desc: 'Cura o time, protege o servidor e revive aliados.',
+    color: '#3dff8b',
+    desc: 'Cura o time, protege o servidor e queima bugs.',
     hp: 110,
     speed: 4.0,
-    atk: { range: 5, dmg: 6, cd: 0.6 },
+    atk: { range: 5, dmg: 9, cd: 0.6 },
     skills: [
-      { name: 'Patch', short: 'PATCH', cd: 10, desc: 'Cura aliados por perto.' },
-      { name: 'Firewall', short: 'FIRE', cd: 20, desc: 'Servidor invulnerável por 4 s.' },
-      { name: 'Rollback', short: 'ULT', cd: 60, desc: 'Revive todos e cura o time.' },
+      { name: 'Patch', short: 'PATCH', cd: 10, desc: 'Cura aliados e fere os bugs por perto.' },
+      { name: 'Firewall', short: 'FIRE', cd: 20, desc: 'Servidor invulnerável e queima os bugs ao redor.' },
+      { name: 'Rollback', short: 'ULT', cd: 60, desc: 'Revive e cura todos, e fere todos os bugs.' },
     ],
   },
   tank: {
     name: 'Tank',
     tag: 'TANK',
-    color: '#FF9E44',
-    desc: 'Linha de frente: atrai e segura os bugs.',
+    color: '#ff8a1f',
+    desc: 'Linha de frente: atrai, segura e machuca os bugs.',
     hp: 180,
     speed: 3.8,
-    atk: { range: 1.8, dmg: 14, cd: 0.6, aoe: true },
+    atk: { range: 2, dmg: 18, cd: 0.6, aoe: true },
     skills: [
-      { name: 'Grito', short: 'GRITO', cd: 10, desc: 'Bugs passam a te perseguir.' },
-      { name: 'Escudo', short: 'ESC', cd: 12, desc: 'Reduz o dano recebido.' },
-      { name: 'Muralha', short: 'ULT', cd: 45, desc: 'Empurra e atordoa os bugs.' },
+      { name: 'Grito', short: 'GRITO', cd: 10, desc: 'Bugs te perseguem e levam dano.' },
+      { name: 'Escudo', short: 'ESC', cd: 12, desc: 'Menos dano recebido e devolve dano a quem te bate.' },
+      { name: 'Muralha', short: 'ULT', cd: 45, desc: 'Empurra, atordoa e fere os bugs por perto.' },
     ],
   },
   po: {
     name: 'PO',
     tag: 'PO',
-    color: '#FF7EB6',
+    color: '#ff4fa3',
     desc: 'Prioriza alvos: dano extra e pontos em dobro.',
     hp: 95,
     speed: 4.2,
-    atk: { range: 6, dmg: 5, cd: 0.6 },
+    atk: { range: 6, dmg: 9, cd: 0.55 },
     skills: [
-      { name: 'Priorizar', short: 'PRIO', cd: 6, desc: 'Marca 1 bug: +50% de dano e pontos x2.' },
-      { name: 'Mudança de escopo', short: 'SCOPE', cd: 15, desc: 'Efeito aleatório: bom, ruim ou caos.' },
-      { name: 'Sprint Review', short: 'ULT', cd: 60, desc: 'Congela os bugs e paga o combo em pontos.' },
+      { name: 'Priorizar', short: 'PRIO', cd: 6, desc: 'Marca 1 bug (+50% de dano, pontos x2) e o atinge com força.' },
+      { name: 'Mudança de escopo', short: 'SCOPE', cd: 15, desc: 'Sorteio: dano em todos, congelar, meteoros... ou caos.' },
+      { name: 'Sprint Review', short: 'ULT', cd: 60, desc: 'Congela e fere todos os bugs e paga o combo em pontos.' },
     ],
   },
 };
@@ -177,7 +177,18 @@ export const ENEMIES = {
   boss: { name: 'Segfault', hp: 600, speed: 1.0, dmg: 25, r: 0.9, pts: 300, aggro: 5 },
 };
 
-export const PICKUPS = ['pizza', 'cafe'];
+// Power-ups que caem dos bugs. `w` é o peso do sorteio.
+export const PICKUP_TYPES = [
+  { id: 'pizza', name: 'Pizza', desc: 'Cura 30% da vida', color: '#FFB020', w: 26 },
+  { id: 'cafe', name: 'Café', desc: 'Velocidade +60% por 6 s', color: '#B9793B', w: 20 },
+  { id: 'shield', name: 'Crachá VIP', desc: 'Recebe 60% menos dano por 8 s', color: '#2BC8FF', w: 14 },
+  { id: 'overclock', name: 'Energético', desc: 'Ataca 60% mais rápido por 8 s', color: '#FFD426', w: 14 },
+  { id: 'bomb', name: 'Deploy', desc: 'Explosão que fere os bugs por perto', color: '#FF3B4E', w: 10 },
+  { id: 'freeze', name: 'Ar-condicionado', desc: 'Congela todos os bugs por 3 s', color: '#7FE3FF', w: 7 },
+  { id: 'star', name: 'Bônus', desc: '+150 pontos', color: '#FFE45C', w: 6 },
+  { id: 'backup', name: 'Backup', desc: 'Cura o servidor e revive aliados', color: '#3DFF8B', w: 6 },
+];
+export const PICKUP_IDS = PICKUP_TYPES.map((p) => p.id);
 
 export const LIMITS = {
   maxEnemies: 36, // teto fixo: vale para todos os aparelhos

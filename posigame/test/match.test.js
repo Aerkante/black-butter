@@ -340,3 +340,204 @@ test('fantasma que reconecta numa partida pausada também retoma', () => {
   m.reattach(a, conn());
   assert.ok(m.server.hp >= m.server.max * 0.6);
 });
+
+// ----- power-ups -----
+import { PICKUP_TYPES, PICKUP_IDS } from '../shared/game.js';
+const kindOf = (id) => PICKUP_IDS.indexOf(id);
+function give(m, p, id) {
+  m.pickups.push({ id: 900 + m.pickups.length, kind: kindOf(id), x: p.x, y: p.y, exp: m.t + 10 });
+  m.updatePickups();
+}
+
+test('há 8 power-ups com nome, descrição e peso; todos os ids são únicos', () => {
+  assert.equal(PICKUP_TYPES.length, 8);
+  assert.equal(new Set(PICKUP_IDS).size, 8);
+  for (const p of PICKUP_TYPES) assert.ok(p.name && p.desc && p.w > 0 && /^#/.test(p.color));
+});
+
+test('pizza cura, café acelera, crachá reduz dano, energético acelera o ataque', () => {
+  const { m } = mk();
+  const p = add(m, 'Ana', 'dev');
+  m.state = 'break';
+  m.stateT = 999;
+  p.invuln = 0;
+  p.hp = 10;
+  give(m, p, 'pizza');
+  assert.equal(p.hp, 10 + p.maxHp * 0.3);
+  give(m, p, 'cafe');
+  assert.ok(p.fx.speedUntil > m.t);
+  give(m, p, 'shield');
+  p.hp = p.maxHp;
+  m.hurtPlayer(p, 50);
+  assert.ok(Math.abs(p.maxHp - p.hp - 20) < 1e-6, 'só 40% do dano');
+  const cd0 = CLASSES_dev();
+  give(m, p, 'overclock');
+  const e = m.makeEnemy('bug', p.x + 1, p.y, 0);
+  e.hp = e.maxHp = 9999;
+  const before = m.t;
+  m.attack(p);
+  assert.ok(Math.abs(p.cd.atk - before - cd0 * 0.6) < 1e-6, 'recarga 40% menor');
+  assert.equal(m.pickups.length, 0);
+});
+function CLASSES_dev() {
+  return 0.45;
+}
+
+test('deploy fere bugs por perto, ar-condicionado congela, bônus dá pontos', () => {
+  const { m } = mk();
+  const p = add(m, 'Ana', 'dev');
+  m.state = 'wave';
+  m.queue = ['bug'];
+  const near = m.makeEnemy('bug', p.x + 2, p.y, 0);
+  const far = m.makeEnemy('bug', p.x + 9, p.y, 0);
+  near.hp = near.maxHp = far.hp = far.maxHp = 1000;
+  give(m, p, 'bomb');
+  assert.ok(near.hp < 1000 && far.hp === 1000);
+  give(m, p, 'freeze');
+  assert.ok(m.buffs.freezeUntil > m.t);
+  const s0 = p.score;
+  give(m, p, 'star');
+  assert.equal(p.score - s0, 150);
+  assert.equal(m.teamScore >= 150, true);
+});
+
+test('backup cura o servidor e revive aliado caído', () => {
+  const { m } = mk();
+  const a = add(m, 'Ana');
+  const b = add(m, 'Beto');
+  m.state = 'break';
+  m.stateT = 999;
+  b.invuln = 0;
+  m.hurtPlayer(b, 9999);
+  m.server.hp = 100;
+  give(m, a, 'backup');
+  assert.equal(b.downed, false);
+  assert.ok(m.server.hp >= 100 + m.server.max * 0.25 - 1e-6);
+});
+
+test('power-ups expiram e o chefe solta vários', () => {
+  const { m } = mk();
+  const a = add(m, 'Ana');
+  m.pickups.push({ id: 1, kind: 0, x: a.x + 5, y: a.y, exp: m.t + 1 });
+  run(m, 2);
+  assert.equal(m.pickups.length, 0, 'sumiu depois de 1 s');
+  m.state = 'wave';
+  m.queue = ['bug'];
+  const boss = m.makeEnemy('boss', 8, 3, 0);
+  m.killEnemy(boss, a);
+  assert.equal(m.pickups.length, 3);
+});
+
+test('snapshot traz power-ups (com tempo restante) e os ativos do jogador', () => {
+  const { m } = mk();
+  const a = add(m, 'Ana');
+  m.dropPickup(a.x + 3, a.y);
+  give(m, a, 'shield');
+  const snap = m.snapshot(a);
+  assert.equal(snap.k[0].length, 5);
+  assert.deepEqual(snap.me.bf.map((b) => b[0]), [2]);
+  assert.ok(snap.me.bf[0][1] > 7);
+});
+
+test('evento de habilidade traz o alvo do PO (Priorizar)', () => {
+  const { m } = mk();
+  const po = add(m, 'Duda', 'po');
+  m.state = 'wave';
+  m.queue = ['bug'];
+  const e = m.makeEnemy('bug', po.x + 2, po.y, 0);
+  e.hp = e.maxHp = 500;
+  m.skill(po, 1);
+  const ev = m.events.find((x) => x[0] === 'skill');
+  assert.equal(ev[5], e.id);
+});
+
+// ----- todas as classes têm poder ofensivo -----
+import { CLASS_IDS, CLASSES } from '../shared/game.js';
+
+function arena(cls, opts = {}) {
+  const { m } = mk(opts);
+  const p = add(m, 'Ana', cls);
+  m.state = 'wave';
+  m.wave = 3;
+  m.queue = ['bug']; // impede o fim da onda
+  p.invuln = 0;
+  const hpOf = (e) => e.hp;
+  const foes = [0, 1, 2].map((i) => {
+    const e = m.makeEnemy('bug', p.x + 1.2 + i * 0.4, p.y + 0.3 * i, 0);
+    e.hp = e.maxHp = 5000;
+    return e;
+  });
+  return { m, p, foes, hpOf };
+}
+
+test('QA, DevOps, Tank e PO: cada habilidade de dano fere bugs por perto', () => {
+  const dmg = { qa: [1, 2, 3], ops: [1, 3], tank: [1, 3], po: [1, 3], dev: [1, 3] };
+  for (const cls of CLASS_IDS) {
+    for (const n of dmg[cls]) {
+      const { m, p, foes } = arena(cls);
+      m.skill(p, n);
+      assert.ok(foes.some((e) => e.hp < 5000), `${cls} habilidade ${n} deveria causar dano`);
+    }
+  }
+});
+
+test('Firewall queima os bugs colados no servidor enquanto dura', () => {
+  const { m, p } = arena('ops');
+  const e = m.makeEnemy('bug', 9.4, 9.4, 0);
+  e.hp = e.maxHp = 5000;
+  m.skill(p, 2);
+  const afterPulse = e.hp;
+  assert.ok(afterPulse < 5000, 'pulso inicial');
+  for (let i = 0; i < 40; i++) m.update(TICK_DT);
+  assert.ok(e.hp < afterPulse, 'queimadura contínua');
+  const far = m.makeEnemy('bug', 1.5, 1.5, 0);
+  far.hp = far.maxHp = 5000;
+  for (let i = 0; i < 40; i++) m.update(TICK_DT);
+  assert.equal(m.fire.until > 0, true);
+});
+
+test('Escudo do Tank devolve dano a quem bate nele', () => {
+  const { m, p, foes } = arena('tank');
+  m.skill(p, 2);
+  const e = foes[0];
+  const before = e.hp;
+  m.hurtPlayer(p, 10, e);
+  assert.ok(e.hp < before, 'atacante levou dano de volta');
+  const e2 = foes[1];
+  p.fx.shieldUntil = 0;
+  const b2 = e2.hp;
+  m.hurtPlayer(p, 10, e2);
+  assert.equal(e2.hp, b2, 'sem escudo não devolve');
+});
+
+test('Mudança de escopo: cada resultado tem efeito real', () => {
+  const seeds = { 0.1: 'dano geral', 0.5: 'congelar', 0.7: 'meteoros', 0.9: 'bugs acelerados' };
+  for (const [r, name] of Object.entries(seeds)) {
+    const { m, p, foes } = arena('po', { rand: () => Number(r) });
+    m.skill(p, 2);
+    const ev = m.events.find((x) => x[0] === 'scope');
+    assert.ok(ev, name);
+    if (name === 'dano geral') assert.ok(foes.every((e) => e.hp < 5000) && m.buffs.dmgUntil > m.t);
+    if (name === 'congelar') assert.ok(m.buffs.freezeUntil > m.t);
+    if (name === 'meteoros') assert.ok(foes.some((e) => e.hp < 5000) && ev[1] === 3);
+    if (name === 'bugs acelerados') assert.ok(m.buffs.hasteUntil > m.t);
+  }
+});
+
+test('Rollback e Sprint Review também ferem todos os bugs do mapa', () => {
+  for (const [cls, n] of [['ops', 3], ['po', 3], ['qa', 3]]) {
+    const { m, p, foes } = arena(cls);
+    const far = m.makeEnemy('bug', 16, 16, 0);
+    far.hp = far.maxHp = 5000;
+    m.skill(p, n);
+    assert.ok(foes.every((e) => e.hp < 5000) && far.hp < 5000, `${cls} ult`);
+  }
+});
+
+test('ataque básico: nenhuma classe é fraca a ponto de só o Dev servir', () => {
+  const base = CLASSES.dev.atk.dmg / CLASSES.dev.atk.cd;
+  for (const id of ['qa', 'ops', 'tank', 'po']) {
+    const dps = CLASSES[id].atk.dmg / CLASSES[id].atk.cd;
+    assert.ok(dps >= base * 0.45, `${id}: dps ${dps.toFixed(1)} vs dev ${base.toFixed(1)}`);
+  }
+});

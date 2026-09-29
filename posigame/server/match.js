@@ -9,6 +9,7 @@ import {
   ENEMIES,
   ENEMY_IDS,
   LIMITS,
+  PICKUP_TYPES,
   moveEntity,
   distToRect,
 } from '../shared/game.js';
@@ -66,6 +67,7 @@ export class Match {
     this.buffs = { dmgUntil: 0, freezeUntil: 0, hasteUntil: 0 };
     this.waveHurt = false;
     this.events = [];
+    this.fire = null;
     this.overInfo = null;
     this.serverMax();
     this.server.hp = this.server.max;
@@ -108,7 +110,7 @@ export class Match {
     p.hurt = false;
     p.runDone = false;
     p.cd = { atk: 0, s1: 0, s2: 0, ult: 0 };
-    p.fx = { speedUntil: 0, shieldUntil: 0, slowUntil: 0 };
+    p.fx = { speedUntil: 0, shieldUntil: 0, slowUntil: 0, overUntil: 0 };
     this.placeSafely(p);
   }
 
@@ -253,9 +255,9 @@ export class Match {
     if (!key || p.cd[key] > this.t) return;
     const def = CLASSES[p.cls].skills[n - 1];
     p.cd[key] = this.t + def.cd;
-    CAST[p.cls][n - 1](this, p);
+    const info = CAST[p.cls][n - 1](this, p);
     this.L('debug', 'combate', `${p.nick} usou ${def.name}`);
-    this.events.push(['skill', p.id, n, round1(p.x), round1(p.y)]);
+    this.events.push(['skill', p.id, n, round1(p.x), round1(p.y), info || 0]);
   }
 
   // ----- laço principal -----
@@ -336,7 +338,8 @@ export class Match {
   attack(p) {
     const cls = CLASSES[p.cls];
     const a = cls.atk;
-    p.cd.atk = this.t + a.cd;
+    const over = p.fx.overUntil > this.t ? 0.4 : 0; // Energético: recarga 40% menor
+    p.cd.atk = this.t + a.cd * (1 - over);
     if (a.aoe) {
       const hit = this.enemies.filter((e) => !e.spawning && dist(e, p) <= a.range + e.r);
       if (!hit.length) {
@@ -516,7 +519,9 @@ export class Match {
     const frozen = this.buffs.freezeUntil > this.t;
     const haste = this.buffs.hasteUntil > this.t ? 1.3 : 1;
     const players = this.connectedPlayers().filter((p) => !p.downed);
-    for (const e of this.enemies) {
+    this.updateFire(dt);
+    for (const e of [...this.enemies]) {
+      if (e.dead) continue;
       if (e.spawning) {
         e.spawnLeft -= dt;
         if (e.spawnLeft <= 0) e.spawning = false;
@@ -623,9 +628,23 @@ export class Match {
         }
       } else if (this.t >= e.atkT) {
         e.atkT = this.t + 1;
-        if (e.target) this.hurtPlayer(e.target, e.dmg);
+        if (e.target) this.hurtPlayer(e.target, e.dmg, e);
         else this.hurtServer(e.dmg);
       }
+    }
+  }
+
+  // Firewall do DevOps: enquanto dura, os bugs colados no servidor queimam
+  updateFire(dt) {
+    if (!this.fire || this.t >= this.fire.until) return;
+    this.fire.tick -= dt;
+    if (this.fire.tick > 0) return;
+    this.fire.tick = 0.5;
+    const owner = this.players.get(this.fire.by) || null;
+    const cx = MAP.server.x + MAP.server.w / 2;
+    const cy = MAP.server.y + MAP.server.h / 2;
+    for (const e of [...this.enemies]) {
+      if (!e.spawning && Math.hypot(e.x - cx, e.y - cy) < 3.6) this.damageEnemy(e, 6, owner);
     }
   }
 
@@ -656,6 +675,7 @@ export class Match {
     const idx = this.enemies.indexOf(e);
     if (idx < 0) return;
     this.enemies.splice(idx, 1);
+    e.dead = true;
     this.combo += 1;
     this.comboT = this.t + COMBO_WINDOW;
     let pts = e.def.pts * (1 + 0.05 * (this.wave - 1)) * (1 + Math.min(this.combo, 40) * 0.025);
@@ -678,22 +698,34 @@ export class Match {
         this.makeEnemy('minimail', e.x + (i ? 0.3 : -0.3), e.y + 0.2, 0);
       }
     }
-    if (this.rand() < (e.type === 'boss' ? 1 : 0.1)) {
-      this.pickups.push({
-        id: this.nextPickupId++,
-        type: this.rand() < 0.6 ? 'pizza' : 'cafe',
-        x: e.x,
-        y: e.y,
-        exp: this.t + 12,
-      });
+    const drops = e.type === 'boss' ? 3 : this.rand() < (e.type === 'minimail' ? 0.04 : 0.14) ? 1 : 0;
+    for (let i = 0; i < drops; i++) this.dropPickup(e.x + (i - (drops - 1) / 2) * 0.7, e.y + (i % 2) * 0.3);
+  }
+
+  dropPickup(x, y) {
+    let roll = this.rand() * PICKUP_TYPES.reduce((a, p) => a + p.w, 0);
+    let kind = 0;
+    for (let i = 0; i < PICKUP_TYPES.length; i++) {
+      roll -= PICKUP_TYPES[i].w;
+      if (roll <= 0) {
+        kind = i;
+        break;
+      }
     }
+    const nx = Math.min(MAP.w - 0.5, Math.max(0.5, x));
+    const ny = Math.min(MAP.h - 0.5, Math.max(0.5, y));
+    this.pickups.push({ id: this.nextPickupId++, kind, x: nx, y: ny, exp: this.t + 14 });
   }
 
   // ----- dano e cura -----
 
-  hurtPlayer(p, dmg) {
+  hurtPlayer(p, dmg, attacker = null) {
     if (p.downed || p.ghost || p.invuln > this.t) return;
-    if (p.fx.shieldUntil > this.t) dmg *= 0.4;
+    if (p.fx.shieldUntil > this.t) {
+      dmg *= 0.4;
+      // Escudo do Tank: quem bate leva dano de volta
+      if (attacker && p.cls === 'tank' && this.enemies.includes(attacker)) this.damageEnemy(attacker, 12, p);
+    }
     p.hp -= dmg;
     p.lastHit = this.t;
     this.waveHurt = true;
@@ -732,15 +764,47 @@ export class Match {
         continue;
       }
       for (const p of this.players.values()) {
-        if (p.ghost || p.downed || dist(p, k) > 0.7) continue;
-        if (k.type === 'pizza') p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3);
-        else p.fx.speedUntil = this.t + 6;
-        this.events.push(['pick', p.id, k.type === 'pizza' ? 0 : 1]);
-        this.L('debug', 'combate', `${p.nick} pegou ${k.type === 'pizza' ? 'pizza (+vida)' : 'café (velocidade)'}`);
+        if (p.ghost || p.downed || dist(p, k) > 0.75) continue;
+        this.applyPickup(p, k);
         this.pickups.splice(i, 1);
         break;
       }
     }
+  }
+
+  applyPickup(p, k) {
+    const type = PICKUP_TYPES[k.kind];
+    switch (type.id) {
+      case 'pizza':
+        p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.3);
+        break;
+      case 'cafe':
+        p.fx.speedUntil = this.t + 6;
+        break;
+      case 'shield':
+        p.fx.shieldUntil = this.t + 8;
+        break;
+      case 'overclock':
+        p.fx.overUntil = this.t + 8;
+        break;
+      case 'bomb':
+        for (const e of enemiesIn(this, k, 4.5)) this.damageEnemy(e, 45, p);
+        break;
+      case 'freeze':
+        this.buffs.freezeUntil = this.t + 3;
+        break;
+      case 'star':
+        p.score += 150;
+        this.teamScore += 150;
+        break;
+      case 'backup':
+        this.healServer(this.server.max * 0.25);
+        for (const a of this.connectedPlayers()) if (a.downed) this.revive(a, 0.4);
+        break;
+      default:
+    }
+    this.events.push(['pick', p.id, k.kind, round1(k.x), round1(k.y)]);
+    this.L('debug', 'combate', `${p.nick} pegou ${type.name} (${type.desc})`);
   }
 
   // ----- fim de partida -----
@@ -827,7 +891,7 @@ export class Match {
         (e.charging > 0 ? 32 : 0);
       s.e.push([e.id, ENEMY_IDS.indexOf(e.type), round2(e.x), round2(e.y), Math.max(0, Math.round(e.hp)), e.maxHp, flags, e.grown]);
     }
-    for (const k of this.pickups) s.k.push([k.id, k.type === 'pizza' ? 0 : 1, round1(k.x), round1(k.y)]);
+    for (const k of this.pickups) s.k.push([k.id, k.kind, round1(k.x), round1(k.y), Math.max(0, Math.round(k.exp - t))]);
     if (forPlayer) {
       const cd = (key) => Math.max(0, round1(forPlayer.cd[key] - t));
       s.me = {
@@ -835,6 +899,14 @@ export class Match {
         cd: [cd('atk'), cd('s1'), cd('s2'), cd('ult')],
         sc: forPlayer.score,
         kl: forPlayer.kills,
+        // power-ups ativos: [índice do power-up, segundos restantes]
+        bf: [
+          [1, forPlayer.fx.speedUntil],
+          [2, forPlayer.fx.shieldUntil],
+          [3, forPlayer.fx.overUntil],
+        ]
+          .filter(([, until]) => until > t)
+          .map(([kind, until]) => [kind, round1(until - t)]),
       };
     }
     if (this.state === 'over') s.over = this.overInfo;
@@ -872,77 +944,118 @@ const CAST = {
     },
   ],
   qa: [
+    // Caso de teste: acha os bugs (marca) e já pune cada um
     (m, p) => {
-      for (const e of enemiesIn(m, p, 7)) e.mark = m.t + 8;
+      for (const e of enemiesIn(m, p, 7)) {
+        e.mark = m.t + 8;
+        m.damageEnemy(e, 18, p);
+      }
     },
+    // Regressão: dano em área e deixa tudo lento
     (m, p) => {
-      for (const e of enemiesIn(m, p, 5)) e.slow = m.t + 4;
+      for (const e of enemiesIn(m, p, 5)) {
+        e.slow = m.t + 4;
+        m.damageEnemy(e, 25, p);
+      }
     },
+    // Bug bash: varre o mapa inteiro
     (m, p) => {
       for (const e of [...m.enemies]) {
         if (e.spawning) continue;
         e.mark = m.t + 8;
-        m.damageEnemy(e, 40, p);
+        m.damageEnemy(e, 70, p);
       }
     },
   ],
   ops: [
+    // Patch: cura o time e o pulso queima os bugs em volta
     (m, p) => {
       for (const a of alliesIn(m, p, 4.5)) a.hp = Math.min(a.maxHp, a.hp + 35);
       m.healServer(60);
+      for (const e of enemiesIn(m, p, 4.5)) m.damageEnemy(e, 25, p);
     },
-    (m) => {
+    // Firewall: servidor blindado e uma muralha de fogo em volta dele
+    (m, p) => {
       m.server.inv = m.t + 4;
+      m.fire = { until: m.t + 4, by: p.id, tick: 0 };
+      const cx = MAP.server.x + MAP.server.w / 2;
+      const cy = MAP.server.y + MAP.server.h / 2;
+      for (const e of enemiesIn(m, { x: cx, y: cy }, 3.6)) m.damageEnemy(e, 35, p);
     },
-    (m) => {
+    // Rollback: desfaz o estrago no time e nos bugs
+    (m, p) => {
       for (const a of m.connectedPlayers()) {
         if (a.downed) m.revive(a, 0.5);
         a.hp = Math.min(a.maxHp, a.hp + a.maxHp * 0.5);
       }
+      for (const e of [...m.enemies]) if (!e.spawning) m.damageEnemy(e, 45, p);
     },
   ],
   tank: [
+    // Grito: provoca e já machuca
     (m, p) => {
       for (const e of enemiesIn(m, p, 6)) {
         e.tauntBy = p.id;
         e.tauntUntil = m.t + 4;
         e.target = p;
+        m.damageEnemy(e, 20, p);
       }
     },
+    // Escudo: menos dano e devolve dano (ver hurtPlayer)
     (m, p) => {
       p.fx.shieldUntil = m.t + 4;
     },
+    // Muralha: empurra, atordoa e esmaga
     (m, p) => {
       for (const e of enemiesIn(m, p, 5)) {
         const d = dist(e, p) || 1;
-        [e.x, e.y] = moveEntity(e.x, e.y, (e.x - p.x) / d, (e.y - p.y) / d, 6, 0.5, e.r);
+        [e.x, e.y] = moveEntity(e.x, e.y, (e.x - p.x) / d, (e.y - p.y) / d, 6, 0.5, Math.min(e.r, 0.5));
         e.stun = m.t + 3;
+        m.damageEnemy(e, 60, p);
       }
     },
   ],
   po: [
+    // Priorizar: marca o bug mais forte ao alcance e o atinge
     (m, p) => {
-      // marca o bug mais forte ao alcance como prioridade
       let best = null;
       for (const e of m.enemies) {
         if (e.spawning || dist(e, p) > 9) continue;
         if (!best || e.hp > best.hp) best = e;
       }
-      if (best) best.prio = m.t + 8;
+      if (!best) return 0;
+      best.prio = m.t + 8;
+      m.damageEnemy(best, 30, p);
+      return best.id;
     },
+    // Mudança de escopo: sorteio entre dano geral, congelar, meteoros ou caos
     (m, p) => {
       const r = m.rand();
-      if (r < 0.5) m.buffs.dmgUntil = m.t + 8; // bom: time causa mais dano
-      else if (r < 0.75) m.buffs.freezeUntil = m.t + 2; // bom: congela
-      else m.buffs.hasteUntil = m.t + 5; // ruim: bugs mais rápidos
-      m.events.push(['scope', r < 0.5 ? 0 : r < 0.75 ? 1 : 2]);
-      m.L('debug', 'combate', `mudança de escopo de ${p.nick}: ${['dano do time +50%', 'bugs congelados', 'bugs mais rápidos (ruim!)'][r < 0.5 ? 0 : r < 0.75 ? 1 : 2]}`);
+      let outcome;
+      if (r < 0.4) {
+        outcome = 0; // time causa mais dano e todos os bugs levam um golpe
+        m.buffs.dmgUntil = m.t + 8;
+        for (const e of [...m.enemies]) if (!e.spawning) m.damageEnemy(e, 20, p);
+      } else if (r < 0.6) {
+        outcome = 1; // congela
+        m.buffs.freezeUntil = m.t + 2;
+      } else if (r < 0.8) {
+        outcome = 3; // meteoros: até 5 bugs levam um golpe pesado
+        const targets = m.enemies.filter((e) => !e.spawning).sort(() => m.rand() - 0.5).slice(0, 5);
+        for (const e of targets) m.damageEnemy(e, 60, p);
+      } else {
+        outcome = 2; // ruim: bugs mais rápidos
+        m.buffs.hasteUntil = m.t + 5;
+      }
+      m.events.push(['scope', outcome]);
+      m.L('debug', 'combate', `mudança de escopo de ${p.nick}: ${['dano do time +50% e golpe em todos', 'bugs congelados', 'bugs mais rápidos (ruim!)', 'meteoros nos bugs'][outcome]}`);
     },
+    // Sprint Review: congela, fere todos e paga o combo
     (m, p) => {
       m.buffs.freezeUntil = m.t + 4;
+      for (const e of [...m.enemies]) if (!e.spawning) m.damageEnemy(e, 35, p);
       const bonus = m.combo * 10;
-      const team = m.connectedPlayers();
-      for (const a of team) {
+      for (const a of m.connectedPlayers()) {
         a.score += bonus;
         m.teamScore += bonus;
       }

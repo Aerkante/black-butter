@@ -44,3 +44,25 @@ test('trilhas: compassos completos, notas audíveis e dentro dos 16 passos', () 
 test('a trilha de chefe é mais rápida que a de combate, que é mais rápida que a do menu', () => {
   assert.ok(TRACKS.boss.tempo > TRACKS.battle.tempo && TRACKS.battle.tempo > TRACKS.menu.tempo);
 });
+
+import { TRACK_META, TRACK_ORDER, POOLS } from '../client/js/music-data.js';
+
+test('há 7 faixas com nome e todas pertencem a um grupo do modo automático', () => {
+  assert.equal(TRACK_ORDER.length, 7);
+  assert.deepEqual([...TRACK_ORDER].sort(), Object.keys(TRACKS).sort());
+  for (const id of TRACK_ORDER) assert.ok(TRACK_META[id].name.length > 3, id);
+  const pooled = Object.values(POOLS).flat();
+  assert.deepEqual([...pooled].sort(), [...TRACK_ORDER].sort(), 'nenhuma faixa fica de fora ou repetida');
+  for (const [kind, ids] of Object.entries(POOLS)) {
+    assert.ok(ids.length >= 2, kind);
+    for (const id of ids) assert.equal(TRACK_META[id].kind, kind);
+  }
+});
+
+test('faixas do mesmo grupo têm andamento coerente e sonoridade diferente', () => {
+  for (const id of POOLS.battle) assert.ok(TRACKS[id].tempo >= 140 && TRACKS[id].tempo <= 170, id);
+  for (const id of POOLS.boss) assert.ok(TRACKS[id].tempo >= 170, id);
+  for (const id of POOLS.menu) assert.ok(TRACKS[id].tempo <= 105, id);
+  const roots = new Set(POOLS.battle.map((id) => TRACKS[id].bars[0].root));
+  assert.equal(roots.size, POOLS.battle.length, 'cada faixa começa em outra tonalidade');
+});
