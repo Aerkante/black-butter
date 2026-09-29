@@ -66,6 +66,7 @@ recordes, gravação de dados, tentativas suspeitas (arquivos fora das pastas p�
 
 - **Sem zoom:** pinça e toque duplo no mesmo lugar não dão zoom (também no iOS). Toques rápidos em lugares
   diferentes continuam funcionando normalmente.
+- **Mesma interface no computador:** menu em abas e botões de poder na tela (com a tecla de cada um), além do teclado.
 - **Menu em abas** (Boneco, Classe, Ranking) com botão JOGAR sempre à mão, botões grandes (mín. 44 px) e sem rolagem lateral.
 - **Controles de toque** que se ajustam à altura da tela: joystick flutuante na esquerda e botões de ataque e habilidades na direita.
 - **Tela cheia** (onde o navegador permite; no iPhone o botão some), tela sempre ligada durante a partida e vibração ao levar dano.
@@ -90,13 +91,27 @@ Em celulares, use o modo paisagem.
 
 ### Classes
 
-| Classe | Papel |
-|---|---|
-| Dev | dano à distância; rajada, corrida e explosão em área |
-| QA | marca bugs (+30% de dano do time), deixa os bugs lentos |
-| DevOps | cura o time, protege o servidor, revive todos |
-| Tank | atrai bugs, reduz dano recebido, empurra e atordoa |
-| PO | prioriza um bug (+50% de dano e pontos x2), muda o escopo (efeito aleatório), congela tudo e paga o combo em pontos |
+Todas as classes têm poder ofensivo, cada uma no seu estilo:
+
+| Classe | Estilo | Poderes (1, 2 e ultimate) |
+|---|---|---|
+| Dev | dano à distância constante | rajada nos 3 mais próximos · corrida · Hotfix (explosão em área) |
+| QA | marca bugs (+30% de dano do time) | Caso de teste (marca e fere) · Regressão (dano em área e lentidão) · Bug bash (70 de dano em todos) |
+| DevOps | cura e controle | Patch (cura o time e fere bugs) · Firewall (servidor invulnerável e queima ao redor) · Rollback (revive, cura e fere todos) |
+| Tank | linha de frente | Grito (atrai e fere) · Escudo (menos dano e devolve dano) · Muralha (empurra, atordoa e esmaga) |
+| PO | prioriza e sorteia | Priorizar (marca e acerta: +50% de dano, pontos x2) · Mudança de escopo (dano em todos, congelar, meteoros ou caos) · Sprint Review (congela, fere todos e paga o combo) |
+
+Cada poder tem efeito visual e sonoro próprio (anéis, raios, partículas, tremor e flash de tela).
+
+### Power-ups
+
+Os bugs soltam power-ups (o chefe solta 3): Pizza (cura), Café (velocidade), Crachá VIP (60% menos dano por 8 s),
+Energético (ataque 60% mais rápido por 8 s), Deploy (explosão), Ar-condicionado (congela todos por 3 s), Bônus
+(+150 pontos) e Backup (cura o servidor e revive aliados). Os ativos aparecem no canto da tela com o tempo restante.
+
+### Dicas
+
+Dicas aparecem no menu, entre as ondas e na tela de fim de jogo (`shared/tips.js`), incluindo dicas da sua classe.
 
 ### Pontuação
 
@@ -140,8 +155,9 @@ pixel a pixel (`client/js/px.js`), sem suavização, e todos os sprites recebem 
 
 ## Música e sons
 
-Trilhas em chiptune geradas em tempo real com WebAudio (pulso 25%/50%, triângulo e ruído), sem arquivos de áudio:
-menu (calma), combate (mais calma entre ondas) e chefe (mais rápida). As partituras estão em
+Sete trilhas em chiptune geradas em tempo real com WebAudio (pulso 25%/50%, triângulo e ruído), sem arquivos de áudio:
+menu (Expediente, Intervalo do Café), combate (Bug Hunter, Sprint Arcade, Deploy Turbo) e chefe (Segfault!, Kernel Panic).
+No modo automático a faixa muda a cada onda; o botão FAIXA (menu e partida) percorre as faixas e fixa a escolhida. As partituras estão em
 `client/js/music-data.js`. Há botões separados para música e efeitos (no menu e na partida). O navegador só libera o
 áudio depois do primeiro toque ou tecla.
 
