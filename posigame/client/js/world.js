@@ -163,6 +163,7 @@ export class World {
           if (ev[1] === this.youId) {
             this.flash = now;
             sfx.hurt();
+            navigator.vibrate?.(30);
           }
           break;
         case 'srv':
@@ -171,6 +172,7 @@ export class World {
           break;
         case 'down':
           sfx.down();
+          if (ev[1] === this.youId) navigator.vibrate?.([80, 40, 120]);
           if (ev[1] === this.youId) this.banner('VOCÊ CAIU', 'Aguarde um DevOps ou PO te reviver', '#E5484D', now, 2.5);
           break;
         case 'rev':

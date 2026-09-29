@@ -36,8 +36,8 @@ function el(tag, props = {}, ...kids) {
 const fmt = (n) => Math.round(n).toLocaleString('pt-BR');
 
 export class UI {
-  constructor({ onNick, onLook, onPlay, onJoin, onLeave, onQuality, fetchRanking, listMatches }) {
-    this.cb = { onNick, onLook, onPlay, onJoin, onLeave, onQuality, fetchRanking, listMatches };
+  constructor({ onNick, onLook, onPlay, onJoin, onLeave, onQuality, onFullscreen, fetchRanking, listMatches }) {
+    this.cb = { onNick, onLook, onPlay, onJoin, onLeave, onQuality, onFullscreen, fetchRanking, listMatches };
     this.look = defaultLook();
     this.cls = 'dev';
     this.tab = 'corpo';
@@ -102,6 +102,7 @@ export class UI {
     $('hud-hint').textContent = touch ? '' : 'WASD mover · Espaço atacar · 1 2 3 habilidades';
     this.hudCache = {};
     this.setupSkills();
+    $('btn-leave').textContent = 'SAIR';
   }
 
   toast(msg, ms = 2600) {
@@ -169,9 +170,29 @@ export class UI {
       /* sem armazenamento */
     }
     this.pickClass(this.cls);
-    $('btn-play').addEventListener('click', () => {
+    for (const id of ['btn-play', 'btn-play2']) {
+      $(id).addEventListener('click', () => {
+        sfx.click();
+        this.cb.onPlay(this.cls);
+      });
+    }
+    // abas do menu no celular (uma seção por vez)
+    this.homeTab = 'play';
+    const nav = $('home-nav');
+    for (const b of nav.querySelectorAll('[data-tab]')) {
+      b.addEventListener('click', () => {
+        sfx.click();
+        this.setHomeTab(b.dataset.tab);
+      });
+    }
+    this.setHomeTab(this.homeTab);
+    // tela cheia (não existe no iPhone: o botão fica escondido)
+    const full = $('opt-full');
+    const canFull = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+    full.hidden = !canFull;
+    full.addEventListener('click', () => {
       sfx.click();
-      this.cb.onPlay(this.cls);
+      this.cb.onFullscreen();
     });
     // abas do ranking
     const tabs = $('rank-tabs');
@@ -183,6 +204,12 @@ export class UI {
       });
       tabs.append(b);
     }
+  }
+
+  setHomeTab(tab) {
+    this.homeTab = tab;
+    $('screen-home').dataset.tab = tab;
+    for (const b of $('home-nav').querySelectorAll('[data-tab]')) b.classList.toggle('on', b.dataset.tab === tab);
   }
 
   pickClass(id) {
@@ -359,7 +386,25 @@ export class UI {
   // ----- HUD -----
 
   buildHud() {
-    $('btn-leave').addEventListener('click', () => {
+    // "SAIR" pede confirmação num segundo toque, para ninguém sair sem querer no meio do jogo
+    const leave = $('btn-leave');
+    let armed = null;
+    leave.addEventListener('click', () => {
+      sfx.click();
+      if (armed) {
+        clearTimeout(armed);
+        armed = null;
+        leave.textContent = 'SAIR';
+        this.cb.onLeave();
+        return;
+      }
+      leave.textContent = 'CONFIRMA?';
+      armed = setTimeout(() => {
+        armed = null;
+        leave.textContent = 'SAIR';
+      }, 2500);
+    });
+    $('rotate-leave').addEventListener('click', () => {
       sfx.click();
       this.cb.onLeave();
     });

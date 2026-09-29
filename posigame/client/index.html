@@ -64,17 +64,18 @@
     <div class="opts">
       <label>Qualidade <select id="opt-quality"><option value="auto">Auto</option><option value="2">Alta</option><option value="1">Média</option><option value="0">Baixa</option></select></label>
       <button class="mini" id="opt-sound" type="button">SOM</button>
+      <button class="mini" id="opt-full" type="button" hidden>TELA CHEIA</button>
       <button class="mini" id="opt-music" type="button">MÚSICA</button>
     </div>
   </header>
   <div class="home-grid">
-    <div class="panel col editor">
+    <div class="panel col editor" data-panel="editor">
       <h2>SEU BONECO</h2>
       <div class="preview-wrap"><canvas id="preview" width="96" height="132"></canvas></div>
       <div class="tabs" id="ed-tabs"></div>
       <div class="ed-body" id="ed-body"></div>
     </div>
-    <div class="panel col play">
+    <div class="panel col play" data-panel="play">
       <h2>CLASSE</h2>
       <div id="class-list" class="class-list"></div>
       <div class="class-info" id="class-info"></div>
@@ -83,12 +84,18 @@
       <div id="match-list" class="match-list"></div>
       <p class="error" id="home-error" role="alert"></p>
     </div>
-    <div class="panel col rank">
+    <div class="panel col rank" data-panel="rank">
       <h2>RANKING</h2>
       <div class="tabs" id="rank-tabs"></div>
       <div id="rank-body" class="rank-body"></div>
     </div>
   </div>
+  <nav id="home-nav" aria-label="Menu">
+    <button type="button" data-tab="editor">BONECO</button>
+    <button type="button" data-tab="play">CLASSE</button>
+    <button type="button" data-tab="rank">RANKING</button>
+    <button type="button" class="go" id="btn-play2">JOGAR</button>
+  </nav>
 </section>
 
 <section id="screen-over" class="screen over" hidden>
@@ -102,7 +109,7 @@
 
 <div id="toast" hidden></div>
 <div id="banner" hidden></div>
-<div id="rotate"><p>Gire o celular para o modo paisagem</p></div>
+<div id="rotate"><p>Gire o celular para o modo paisagem</p><button type="button" id="rotate-leave">SAIR DA PARTIDA</button></div>
 
 <script type="module" src="/client/js/main.js"></script>
 </body>

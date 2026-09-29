@@ -27,6 +27,60 @@ function getToken() {
   }
 }
 
+// ----- sem zoom no celular -----
+// O viewport já pede escala fixa, mas o iOS ignora isso: bloqueia pinça e duplo toque no mesmo lugar.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+}
+let lastTap = { t: 0, x: 0, y: 0 };
+document.addEventListener(
+  'touchend',
+  (e) => {
+    const t = e.changedTouches[0];
+    if (!t || e.target.closest('input, textarea, select')) return;
+    const now = Date.now();
+    const near = Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y) < 40;
+    if (now - lastTap.t < 350 && near) e.preventDefault(); // 2º toque no mesmo lugar: não vira zoom
+    lastTap = { t: now, x: t.clientX, y: t.clientY };
+  },
+  { passive: false },
+);
+document.addEventListener('dblclick', (e) => e.preventDefault());
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+// ----- tela ligada durante a partida e tela cheia -----
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => (wakeLock = null));
+    } else if (!on && wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } catch {
+    wakeLock = null; // o navegador pode negar (economia de bateria): segue sem
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && phase === 'game') keepAwake(true);
+});
+async function toggleFullscreen() {
+  const d = document;
+  try {
+    if (d.fullscreenElement || d.webkitFullscreenElement) {
+      await (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+    } else {
+      const el = d.documentElement;
+      await (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+      if (touch && screen.orientation?.lock) await screen.orientation.lock('landscape').catch(() => {});
+    }
+  } catch {
+    ui.toast('Este navegador não permite tela cheia.');
+  }
+}
+
 const net = new Net();
 const world = new World();
 const renderer = new Renderer($('game'));
@@ -108,6 +162,7 @@ const ui = new UI({
     net.send({ t: 'join', match, cls });
   },
   onLeave: () => net.send({ t: 'leave' }),
+  onFullscreen: toggleFullscreen,
   onQuality: (v) => {
     qualityMode = v;
     perf.started = false;
@@ -128,6 +183,7 @@ function goHome() {
   over = false;
   input.enabled = false;
   input.reset();
+  keepAwake(false);
   ui.showHome(me);
 }
 
@@ -170,6 +226,7 @@ net.on('joined', (msg) => {
   input.reset();
   input.enabled = true;
   ui.showGame(touch);
+  keepAwake(true);
   applyQuality();
   checkOrientation();
 });
