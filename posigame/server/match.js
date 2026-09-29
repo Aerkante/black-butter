@@ -14,6 +14,7 @@ import {
   distToRect,
 } from '../shared/game.js';
 import { silentLogger } from './logger.js';
+import { serverField, fieldTo, dirFrom, losClear, cellOf } from './nav.js';
 
 const SAFE_ENEMY_SPAWN = 6.5; // distância mínima entre um portal e qualquer jogador
 const TELEGRAPH = 1.0; // aviso visual antes de o bug nascer
@@ -555,7 +556,8 @@ export class Match {
           let bd = e.def.aggro;
           for (const p of players) {
             const d = dist(p, e);
-            if (d < bd) {
+            // atrás de uma parede o jogador está a salvo: só persegue com linha de visão
+            if (d < bd && (d < 1.2 || losClear(e.x, e.y, p.x, p.y, 0.2))) {
               bd = d;
               e.target = p;
             }
@@ -580,7 +582,9 @@ export class Match {
       const dToTarget = Math.hypot(tx - e.x, ty - e.y);
       const gap = e.target ? dToTarget - reach : distToRect(e.x, e.y, MAP.server) - e.r - 0.1;
 
-      if (gap > 0.02) {
+      // sem linha reta livre até o jogador (parede no meio), o bug precisa dar a volta pelas portas
+      const los = e.target ? losClear(e.x, e.y, tx, ty, 0.15) : true;
+      if (gap > 0.02 || !los) {
         let speed = e.def.speed * haste * (e.slow > this.t ? 0.45 : 1);
         if (e.type === 'boss') {
           e.chargeT -= dt;
@@ -595,11 +599,15 @@ export class Match {
             speed *= 3;
           }
         }
-        const step = Math.min(speed * dt, Math.max(0, gap));
-        const ux = (tx - e.x) / (dToTarget || 1);
-        const uy = (ty - e.y) / (dToTarget || 1);
+        const step = los ? Math.min(speed * dt, Math.max(0, gap)) : speed * dt;
+        let ux = (tx - e.x) / (dToTarget || 1);
+        let uy = (ty - e.y) / (dToTarget || 1);
         // colisão usa um raio menor para bugs grandes não ficarem presos entre móveis
         const cr = Math.min(e.r, 0.5);
+        if (dToTarget > 1.2 && !losClear(e.x, e.y, tx, ty, cr, e.target ? 0.6 : 1.4)) {
+          const dir = dirFrom(e.target ? this.playerField(e.target) : serverField(), e.x, e.y);
+          if (dir) [ux, uy] = dir;
+        }
         const [nx, ny] = moveEntity(e.x, e.y, ux, uy, step / dt, dt, cr);
         if (Math.hypot(nx - e.x, ny - e.y) < step * 0.3) {
           // travado num obstáculo: contorna sempre pelo mesmo lado
@@ -658,6 +666,13 @@ export class Match {
     e.side = 0;
     e.spawning = true;
     e.spawnLeft = TELEGRAPH;
+  }
+
+  // Campo de distâncias até o jogador (para contornar paredes); recalculado quando ele muda de célula
+  playerField(p) {
+    const c = cellOf(p.x, p.y);
+    if (!p.nav || (p.nav.c !== c && this.t - p.nav.t > 0.35)) p.nav = { c, t: this.t, field: fieldTo(p.x, p.y) };
+    return p.nav.field;
   }
 
   damageEnemy(e, dmg, by) {

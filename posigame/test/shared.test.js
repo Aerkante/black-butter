@@ -42,9 +42,9 @@ test('mapa: pontos seguros e portais livres de obstáculos', () => {
 });
 
 test('colisão: desliza pela parede em vez de atravessar', () => {
-  const [x, y] = moveEntity(3.6, 4.5, 1, 1, 4, 0.5, 0.3); // contra a lateral da mesa em (4,4)
-  assert.ok(x < 3.75);
-  assert.ok(y > 4.5, 'continua deslizando no eixo livre');
+  const [x, y] = moveEntity(1, 7.5, 1, 1, 4, 0.5, 0.3); // contra a lateral da mesa em (1.5, 7.3)
+  assert.ok(x < 1.3);
+  assert.ok(y > 7.5, 'continua deslizando no eixo livre');
 });
 
 test('todas as classes têm 3 habilidades com nome curto para o botão', () => {
