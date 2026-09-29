@@ -72,6 +72,23 @@ recordes, gravação de dados, tentativas suspeitas (arquivos fora das pastas p�
 - **Tela cheia** (onde o navegador permite; no iPhone o botão some), tela sempre ligada durante a partida e vibração ao levar dano.
 - **SAIR** pede um segundo toque para confirmar. No modo retrato aparece o aviso para girar o celular, com um botão para sair da partida.
 
+## O escritório (mapa)
+
+Mapa isométrico de 24x32 tiles baseado na planta do escritório:
+
+- **Sala de reunião** (mesa grande com notebooks e quadro branco) e **sala do diretor** (mesa executiva, estantes, sofá e tapete) no topo.
+- Coluna da esquerda: **componentes** (prateleiras, uma mesa redonda e bancadas sem cadeira com componentes em cima; a de cima à esquerda é do time de Cadastro), **segurança do trabalho** (armários, mesa com capacetes e kit de primeiros socorros) e **copa** (balcão, geladeira, máquina de café, mesas e uma mesa comprida na parte de baixo).
+- **Totem de ponto** na parede da copa, do lado direito depois da porta.
+- **Salão** com as mesas de cada setor (plaquinha colorida sobre cada mesa): Fiscal e SESMT à esquerda; na coluna da direita, de cima para baixo, Secretária executiva (perto do diretor), Projetos, Desenvolvimento e Financeiro (perto da copa).
+- Salas com divisórias de vidro e portas de 2 tiles; cada sala tem piso próprio e uma placa com o nome na parede.
+- **Minimapa** no canto da tela e uma seta que aponta para o servidor quando ele sai da vista.
+- Os bugs **dão a volta pelas paredes e entram pelas portas** (navegação por campo de distâncias em `server/nav.js`); quem está atrás de uma parede não é atacado através dela.
+
+## Guia
+
+A aba **Guia** do menu lista todos os inimigos (com vida, velocidade, dano, pontos e a onda em que aparecem), os
+8 power-ups (com raridade), os setores e as salas, usando os mesmos sprites do jogo.
+
 ## Como jogar
 
 | Ação | Teclado | Celular |
@@ -178,9 +195,9 @@ Os dados ficam em `posigame/data/posigame.json` (escrita atômica) com backup di
 ## Estrutura
 
 ```
-server/   index.js (HTTP + WebSocket) · match.js (simulação) · matchmaker.js · store.js · nick.js · config.js
+server/   index.js (HTTP + WebSocket) · match.js (simulação) · nav.js (navegação) · matchmaker.js · store.js · nick.js · logger.js · config.js
 shared/   game.js (mapa, classes, inimigos, colisão) · look.js (catálogo do boneco), usados por servidor e cliente
-client/   index.html · style.css · js/ (main, net, world, render, sprites, input, ui, sfx) · fonts/
+client/   index.html · style.css · js/ (main, net, world, render, scenery, props, iso, px, sprites, skillfx, input, ui, sfx, music) · fonts/
 scripts/  admin.js
 test/     testes automatizados (node:test)
 ```
