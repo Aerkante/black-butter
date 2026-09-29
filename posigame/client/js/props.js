@@ -414,25 +414,58 @@ function drawVending(g, ox, oy, w, d) {
   decal(g, ox, oy, o, 'R', 0.4, 0.6, 16, 18, K.green);
 }
 
+// ponto eletrônico: caixinha presa na parede (face voltada para +x)
 function drawTotem(g, ox, oy, w, d) {
-  const o = { u: 0, v: 0, z: 0, w, d, h: 40, top: '#5a66ff', left: '#1b2170', right: '#2a36b0' };
+  const o = { u: 0, v: 0, z: 22, w, d, h: 15, top: '#5a66ff', left: '#1b2170', right: '#2a36b0' };
   box(g, ox, oy, o);
-  decal(g, ox, oy, o, 'L', 0.1, 0.9, 22, 36, '#0a0e40');
-  decal(g, ox, oy, o, 'L', 0.16, 0.84, 24, 34, K.cyan);
-  // relógio na tela
-  decal(g, ox, oy, o, 'L', 0.48, 0.52, 25, 31, '#0a0e40');
-  decal(g, ox, oy, o, 'L', 0.48, 0.66, 27, 28, '#0a0e40');
-  decal(g, ox, oy, o, 'L', 0.2, 0.8, 12, 20, '#232a78'); // leitor
-  decal(g, ox, oy, o, 'L', 0.36, 0.64, 13, 19, K.green);
-  decal(g, ox, oy, o, 'R', 0.2, 0.8, 22, 34, '#232a78');
-  decal(g, ox, oy, o, 'R', 0.35, 0.65, 26, 30, K.yellow);
-  box(g, ox, oy, { u: 0.2, v: 0.2, z: 40, w: 0.4, d: 0.4, h: 3, ...tone(K.red, '#a01b2c', '#c8283b') });
+  decal(g, ox, oy, o, 'R', 0.1, 0.9, 5, 13, '#0a0e40'); // moldura da tela
+  decal(g, ox, oy, o, 'R', 0.16, 0.84, 6, 12.5, K.cyan);
+  decal(g, ox, oy, o, 'R', 0.46, 0.54, 8, 11, '#0a0e40'); // ponteiros do relógio
+  decal(g, ox, oy, o, 'R', 0.46, 0.66, 9.5, 10.5, '#0a0e40');
+  decal(g, ox, oy, o, 'R', 0.3, 0.7, 1.5, 3.5, K.green); // leitor
+}
+
+// baia em "+": quatro braços de mesa em volta de um centro, um lugar em cada canto
+function drawBaia(g, ox, oy, w, d, p) {
+  const accent = SECTORS[p.sector]?.color || K.yellow;
+  const H = 9;
+  const arm = (u, v, aw, ad) => {
+    const o = { u, v, z: 0, w: aw, d: ad, h: H, ...WOOD };
+    box(g, ox, oy, o);
+    decal(g, ox, oy, o, 'L', 0.04, 0.96, 1, 6, '#c0621f');
+    decal(g, ox, oy, o, 'R', 0.04, 0.96, 1, 6, '#c0621f');
+    return o;
+  };
+  const screen = (u, v, vertical) => {
+    // monitor pequeno no braço (parede fina na direção do braço)
+    const m = vertical ? { u, v, z: H, w: 0.08, d: 0.7, h: 9, ...DARK } : { u, v, z: H, w: 0.7, d: 0.08, h: 9, ...DARK };
+    box(g, ox, oy, m);
+    decal(g, ox, oy, m, vertical ? 'R' : 'L', 0.1, 0.9, 1.5, 7.5, K.green);
+    decal(g, ox, oy, m, vertical ? 'R' : 'L', 0.15, 0.45, 5, 7, '#c8ffe0');
+  };
+  const kb = (u, v) => box(g, ox, oy, { u, v, z: H, w: 0.4, d: 0.24, h: 1, ...tone('#e7d9b0', '#a89a6a', '#c9bb8a') });
+  const A = (w - 1) / 2; // comprimento de cada braço
+  arm(A, 0, 1, A); // braço de trás
+  screen(A + 0.22, 0.2, false);
+  arm(0, A, A, 1); // braço da esquerda
+  screen(0.2, A + 0.24, true);
+  const hub = arm(A, A, 1, 1);
+  decal(g, ox, oy, hub, 'T', 0.15, 0.85, 0.15, 0.85, accent); // placa do setor no centro
+  arm(A + 1, A, A, 1); // braço da direita
+  screen(w - 0.3, A + 0.22, true);
+  arm(A, A + 1, 1, A); // braço da frente
+  screen(A + 0.22, w - 0.3, false);
+  kb(A + 0.3, A - 0.8); kb(A - 0.8, A + 0.3); kb(A + 1.4, A + 0.3); kb(A + 0.3, A + 1.4);
+  // caneca e post-it
+  box(g, ox, oy, { u: A + 1.5, v: A + 0.15, z: H, w: 0.16, d: 0.16, h: 4, ...WHITE });
+  box(g, ox, oy, { u: A + 0.2, v: A + 1.6, z: H, w: 0.14, d: 0.14, h: 1, ...tone(K.yellow, '#c9a10f', '#e6be1a') });
 }
 
 // ----- tabela de tipos -----
 // kind: 'box' = âncora no canto de trás da pegada; 'point' = âncora no ponto; 'center' = centro da pegada
 const TYPES = {
   desk: { kind: 'box', draw: drawDesk, hpx: 36 },
+  baia: { kind: 'box', draw: drawBaia, hpx: 36 },
   chair: { kind: 'point', draw: drawChair, hpx: 24, size: [36, 40, 18, 22] },
   printer: { kind: 'box', draw: drawPrinter, hpx: 30 },
   plant: { kind: 'point', draw: drawPlant, hpx: 50, size: [40, 56, 20, 46] },

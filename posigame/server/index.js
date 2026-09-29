@@ -213,6 +213,12 @@ export function createApp(overrides = {}) {
         case 'sk':
           if (this.player && Number.isInteger(msg.n)) this.match.skill(this.player, msg.n);
           return;
+        case 'cheat': {
+          if (!config.cheats || !this.player) return;
+          const r = this.match.cheat(this.player, msg.code);
+          if (r) this.send({ t: 'cheat', ok: r.ok, msg: r.msg });
+          return;
+        }
         case 'look':
           return this.setLook(msg.look);
         case 'list':

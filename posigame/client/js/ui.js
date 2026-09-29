@@ -278,7 +278,7 @@ export class UI {
     for (const r of MAP.rooms) {
       sec.append(el('div', { class: 'guide-row' }, el('div', { class: 'sw', style: `background:${r.plate}` }, r.name.slice(0, 9)), el('div', { class: 'txt' }, el('b', {}, `Sala: ${r.name.charAt(0)}${r.name.slice(1).toLowerCase()}`), el('br'), 'Divisórias de vidro e portas: os bugs também dão a volta pelas portas.')));
     }
-    sec.append(el('div', { class: 'guide-row' }, el('div', { class: 'sw', style: 'background:#7FE3FF' }, 'PONTO'), el('div', { class: 'txt' }, el('b', {}, 'Totem de ponto'), el('br'), 'Na parede da copa, do lado direito depois da porta.')));
+    sec.append(el('div', { class: 'guide-row' }, el('div', { class: 'sw', style: 'background:#7FE3FF' }, 'PONTO'), el('div', { class: 'txt' }, el('b', {}, 'Ponto eletrônico'), el('br'), 'Uma caixinha na parede da copa, perto do Financeiro.')));
   }
 
   setHomeTab(tab) {

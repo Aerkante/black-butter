@@ -20,32 +20,44 @@ test('todo power-up tem raridade coerente com o peso do sorteio', () => {
 test('cada mesa do salão pertence a um setor e todos os setores estão no mapa', () => {
   const used = new Set(MAP.props.filter((p) => p.sector).map((p) => p.sector));
   assert.deepEqual([...used].sort(), Object.keys(SECTORS).sort());
+  // só a secretária tem mesa individual; todas as outras são baias em "+" com 4 lugares
   const desks = MAP.props.filter((p) => p.t === 'desk');
-  assert.equal(desks.length, 8);
-  const count = (s) => desks.filter((d) => d.sector === s).length;
-  assert.equal(count('fiscal'), 2);
-  assert.equal(count('sesmt'), 2);
-  for (const s of ['secretaria', 'projetos', 'desenvolvimento', 'financeiro']) assert.equal(count(s), 1, s);
+  assert.deepEqual(desks.map((d) => d.sector), ['secretaria']);
+  const baias = MAP.props.filter((p) => p.t === 'baia');
+  assert.equal(baias.length, 6);
+  for (const b of baias) {
+    assert.equal(b.rects.length, 2, 'formato de +');
+    const seats = MAP.props.filter((p) => p.t === 'chair' && p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h);
+    assert.equal(seats.length, 4, `4 lugares na baia ${b.sector}`);
+  }
+  assert.deepEqual(baias.map((b) => b.sector).sort(), ['cadastro', 'desenvolvimento', 'financeiro', 'fiscal', 'projetos', 'sesmt']);
   // coluna da direita, de cima para baixo: secretária, projetos, desenvolvimento, financeiro
-  const col = desks.filter((d) => d.x > 15).sort((a, b) => a.y - b.y).map((d) => d.sector);
+  const col = [...desks, ...baias].filter((d) => d.x > 15).sort((a, b) => a.y - b.y).map((d) => d.sector);
   assert.deepEqual(col, ['secretaria', 'projetos', 'desenvolvimento', 'financeiro']);
-  const cadastro = MAP.props.find((p) => p.sector === 'cadastro');
-  const room = MAP.rooms.find((r) => r.id === 'componentes');
-  assert.ok(cadastro.x >= room.x && cadastro.x < room.x + room.w && cadastro.y >= room.y && cadastro.y < room.y + room.h);
-  const others = MAP.props.filter((p) => p.t === 'workbench' && p !== cadastro);
-  assert.ok(others.every((w) => w.x > cadastro.x || w.y > cadastro.y), 'Cadastro é a mesa de cima à esquerda');
+  // Cadastro fica fora da sala de componentes
+  const cadastro = baias.find((b) => b.sector === 'cadastro');
+  assert.equal(MAP.rooms.some((r) => cadastro.x >= r.x && cadastro.x < r.x + r.w && cadastro.y >= r.y && cadastro.y < r.y + r.h), false);
 });
 
-test('mapa novo: mesa comprida na copa, mesa redonda e bancadas sem cadeira nos componentes, totem depois da copa', () => {
+test('sala de componentes: U de mesas, mesa redonda com 3 cadeiras, sem armários; totem é caixa na parede do lado do Financeiro', () => {
   const inRoom = (id) => MAP.props.filter((p) => { const r = MAP.rooms.find((x) => x.id === id); return p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h; });
   const copa = inRoom('copa');
   const longTable = copa.find((p) => p.t === 'tableLong');
   assert.ok(longTable && longTable.y > 28, 'mesa na parte de baixo da copa');
   const comp = inRoom('componentes');
-  assert.ok(comp.some((p) => p.t === 'roundtable'), 'mesa redonda');
-  assert.ok(comp.filter((p) => p.t === 'workbench').length >= 2);
-  assert.ok(!comp.some((p) => p.t === 'chair'), 'sem cadeiras na sala de componentes');
+  assert.equal(comp.filter((p) => p.t === 'workbench').length, 3, 'três mesas de componentes');
+  assert.equal(comp.filter((p) => p.t === 'roundtable').length, 1);
+  assert.equal(comp.filter((p) => p.t === 'chair').length, 3, 'só as cadeiras da mesa redonda');
+  assert.ok(!comp.some((p) => /^rack|^locker/.test(p.t)), 'sem armários');
   const totem = MAP.props.find((p) => p.t === 'totem');
-  const copaRoom = MAP.rooms.find((r) => r.id === 'copa');
-  assert.ok(totem.x >= copaRoom.x + copaRoom.w && totem.y > 29.5, 'totem na parede da copa, do lado direito, depois da porta');
+  const wall = MAP.walls.find((w) => w.w < 1 && totem.x >= w.x && totem.x <= w.x + w.w + 0.3 && totem.y >= w.y && totem.y < w.y + w.h);
+  assert.ok(wall, 'totem encostado numa parede');
+  assert.ok(totem.w < 0.5 && totem.h < 1, 'só uma caixinha');
+});
+
+test('sala do diretor é simples', () => {
+  const r = MAP.rooms.find((x) => x.id === 'diretor');
+  const inside = MAP.props.filter((p) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h);
+  assert.ok(inside.length <= 5);
+  assert.ok(inside.some((p) => p.t === 'bigdesk'));
 });

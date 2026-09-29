@@ -212,6 +212,42 @@ net.on('err', (msg) => {
 net.on('look', (msg) => {
   if (me) me.look = msg.look;
 });
+// terminal secreto: tecla ` (ou 5 toques rápidos no placar); o servidor valida o código
+{
+  const form = document.getElementById('cheat');
+  const inp = document.getElementById('cheat-in');
+  const close = () => {
+    form.hidden = true;
+    inp.blur();
+  };
+  const open = () => {
+    if (phase !== 'game') return;
+    form.hidden = false;
+    inp.value = '';
+    inp.focus();
+  };
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Backquote' && phase === 'game') {
+      e.preventDefault();
+      form.hidden ? open() : close();
+    } else if (e.code === 'Escape' && !form.hidden) close();
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (inp.value.trim()) net.send({ t: 'cheat', code: inp.value });
+    close();
+  });
+  let taps = [];
+  document.getElementById('hud-score').addEventListener('pointerdown', () => {
+    const now = performance.now();
+    taps = taps.filter((t) => now - t < 2500).concat(now);
+    if (taps.length >= 5) {
+      taps = [];
+      open();
+    }
+  });
+}
+net.on('cheat', (msg) => ui.toast(`${msg.ok ? '>_ ' : '!! '}${msg.msg}`, 2600));
 net.on('matches', (msg) => ui.renderMatches(msg.list));
 net.on('joined', (msg) => {
   world.reset();

@@ -35,6 +35,9 @@ export const config = {
   // grava também em arquivos diários em data/logs (LOG_FILE=0 desliga)
   logFile: process.env.LOG_FILE !== '0',
 
+  // cheats secretos (CHEATS=0 desliga). Quem usa fica sem registrar pontos no ranking naquela rodada.
+  cheats: process.env.CHEATS !== '0',
+
   // ranking
   maxRuns: 20000,
   maxTeams: 1000,

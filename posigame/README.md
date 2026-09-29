@@ -77,10 +77,10 @@ recordes, gravação de dados, tentativas suspeitas (arquivos fora das pastas p�
 Mapa isométrico de 24x32 tiles baseado na planta do escritório:
 
 - **Sala de reunião** (mesa grande com notebooks e quadro branco) e **sala do diretor** (mesa executiva, estantes, sofá e tapete) no topo.
-- Coluna da esquerda: **componentes** (prateleiras, uma mesa redonda e bancadas sem cadeira com componentes em cima; a de cima à esquerda é do time de Cadastro), **segurança do trabalho** (armários, mesa com capacetes e kit de primeiros socorros) e **copa** (balcão, geladeira, máquina de café, mesas e uma mesa comprida na parte de baixo).
-- **Totem de ponto** na parede da copa, do lado direito depois da porta.
-- **Salão** com as mesas de cada setor (plaquinha colorida sobre cada mesa): Fiscal e SESMT à esquerda; na coluna da direita, de cima para baixo, Secretária executiva (perto do diretor), Projetos, Desenvolvimento e Financeiro (perto da copa).
-- Salas com divisórias de vidro e portas de 2 tiles; cada sala tem piso próprio e uma placa com o nome na parede.
+- Coluna da esquerda: **componentes** (sem armários: três mesas com componentes em U, mesa redonda com 3 cadeiras, lixeira e janelas), **segurança do trabalho** (armários, mesa com capacetes e kit de primeiros socorros) e **copa** (balcão, geladeira, máquina de café, mesas e uma mesa comprida na parte de baixo).
+- **Ponto eletrônico**: uma caixinha na parede da copa (lado de fora), perto do Financeiro.
+- **Salão** com piso de porcelanato creme (peças de 2 m x 2 m). Só a Secretária executiva (perto do diretor) tem mesa individual; os demais setores têm **baias em "+" com 4 lugares**: Fiscal, SESMT e Cadastro na fileira de cima e, na coluna da direita, Projetos, Desenvolvimento e Financeiro (perto da copa). A sala do diretor é simples (mesa, duas cadeiras e uma planta).
+- Salas com divisórias de vidro e portas de 2 tiles; só a reunião tem piso de madeira, e cada sala tem uma placa com o nome na parede.
 - **Minimapa** no canto da tela e uma seta que aponta para o servidor quando ele sai da vista.
 - Os bugs **dão a volta pelas paredes e entram pelas portas** (navegação por campo de distâncias em `server/nav.js`); quem está atrás de uma parede não é atacado através dela.
 
@@ -223,3 +223,11 @@ Press Start 2P e VT323 (SIL Open Font License 1.1), incluídas em `client/fonts/
 
 Mais mapas (Data Center, Refeitório), roupas por conquista, modo espectador e fila de espera, desafio do dia,
 ranking por setor, QR code no próprio servidor e interesse por área na rede (LOD de rede).
+
+## Cheats secretos (só para quem administra)
+
+Abra o terminal escondido durante a partida com a tecla `` ` `` (ou 5 toques rápidos no placar, no celular) e digite um código.
+O servidor valida tudo e, **quem usa qualquer cheat fica sem registrar pontos no ranking naquela rodada** (e o time não entra no
+recorde de equipes). Códigos: `sudo` (modo deus liga/desliga), `hotfix` (cura o time e o servidor), `cafezao` (velocidade 45 s),
+`turbo` (recargas zeradas + overclock), `rmrf` (remove todos os bugs), `deploy` (pula para a próxima onda), `segfault` (chama o chefe).
+Desligue tudo com `CHEATS=0`.

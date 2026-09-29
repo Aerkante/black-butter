@@ -110,6 +110,8 @@ export class Match {
     p.flushedKills = 0;
     p.hurt = false;
     p.runDone = false;
+    p.cheated = false;
+    p.god = false;
     p.cd = { atk: 0, s1: 0, s2: 0, ult: 0 };
     p.fx = { speedUntil: 0, shieldUntil: 0, slowUntil: 0, overUntil: 0 };
     this.placeSafely(p);
@@ -248,6 +250,58 @@ export class Match {
     p.inAt = Date.now();
     if (dx > 0.2) p.face = 1;
     else if (dx < -0.2) p.face = -1;
+  }
+
+  // Cheats secretos. Só pelo servidor; quem usa perde o registro de pontos da rodada (nada vai ao ranking).
+  cheat(p, code) {
+    if (p.ghost) return null;
+    const c = String(code || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+    let msg;
+    switch (c) {
+      case 'sudo':
+        p.god = !p.god;
+        msg = p.god ? 'sudo: modo deus LIGADO' : 'sudo: modo deus desligado';
+        break;
+      case 'hotfix':
+        for (const q of this.connectedPlayers()) {
+          q.downed = false;
+          q.hp = q.maxHp;
+          q.invuln = this.t + 2;
+        }
+        this.server.hp = this.server.max;
+        msg = 'hotfix: time curado, servidor 100%';
+        break;
+      case 'cafezao':
+        p.fx.speedUntil = this.t + 45;
+        msg = 'cafezão: velocidade turbo por 45 s';
+        break;
+      case 'turbo':
+        p.cd = { atk: 0, s1: 0, s2: 0, ult: 0 };
+        p.fx.overUntil = this.t + 45;
+        msg = 'turbo: recargas zeradas e overclock por 45 s';
+        break;
+      case 'rmrf':
+        this.enemies.length = 0;
+        this.queue = [];
+        msg = 'rm -rf: todos os bugs removidos';
+        break;
+      case 'deploy':
+        this.queue = [];
+        this.enemies.length = 0;
+        if (this.state === 'break') this.stateT = 0;
+        msg = 'deploy: pulando para a próxima onda';
+        break;
+      case 'segfault':
+        this.makeEnemy('boss', MAP.portals[0].x, MAP.portals[0].y, 1);
+        msg = 'segfault: o chefe foi invocado!';
+        break;
+      default:
+        this.L('debug', 'cheat', `${p.nick} tentou um código inválido`);
+        return { ok: false, msg: 'comando não encontrado' };
+    }
+    p.cheated = true;
+    this.L('warn', 'cheat', `${p.nick} usou o cheat "${c}" (pontos desta rodada não vão para o ranking)`);
+    return { ok: true, msg };
   }
 
   skill(p, n) {
@@ -735,7 +789,7 @@ export class Match {
   // ----- dano e cura -----
 
   hurtPlayer(p, dmg, attacker = null) {
-    if (p.downed || p.ghost || p.invuln > this.t) return;
+    if (p.downed || p.ghost || p.god || p.invuln > this.t) return;
     if (p.fx.shieldUntil > this.t) {
       dmg *= 0.4;
       // Escudo do Tank: quem bate leva dano de volta
@@ -840,13 +894,13 @@ export class Match {
     this.events.push(['over', this.wave, this.teamScore, serverDown ? 1 : 0]);
     this.L('info', 'partida', `FIM DE JOGO (${serverDown ? 'o servidor caiu' : 'o time inteiro caiu'}): onda ${this.wave}, ${this.teamScore} pontos | ${board.map((b) => `${b.nick} ${b.score}`).join(', ')}`);
     for (const p of present) this.finishRun(p);
-    this.hooks.onTeamRecord?.({ score: this.teamScore, wave: this.wave, nicks: present.map((p) => p.nick) });
+    if (!present.some((p) => p.cheated)) this.hooks.onTeamRecord?.({ score: this.teamScore, wave: this.wave, nicks: present.map((p) => p.nick) });
   }
 
   flush(p) {
     const ds = p.score - p.flushedScore;
     const dk = p.kills - p.flushedKills;
-    if (ds || dk) this.hooks.onProgress?.(p, { score: ds, kills: dk });
+    if ((ds || dk) && !p.cheated) this.hooks.onProgress?.(p, { score: ds, kills: dk });
     p.flushedScore = p.score;
     p.flushedKills = p.kills;
   }
@@ -858,7 +912,7 @@ export class Match {
     }
     this.flush(p);
     // quem sai logo após um reinício (sem jogar) não conta como partida
-    if (p.score > 0 || this.wave > 0) this.hooks.onRun?.(p, { score: p.score, wave: this.wave, cls: p.cls });
+    if (!p.cheated && (p.score > 0 || this.wave > 0)) this.hooks.onRun?.(p, { score: p.score, wave: this.wave, cls: p.cls });
     if (this.state === 'over') p.runDone = true;
   }
 

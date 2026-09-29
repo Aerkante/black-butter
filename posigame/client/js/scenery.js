@@ -27,12 +27,8 @@ const DOORS = [
 
 // cores de piso por sala: [placa A, placa B]
 const FLOORS = {
-  office: [K.carpet, K.carpet2],
+  porcelain: ['#f4ecd6', '#efe5c9'], // porcelanato creme, peças de 2 m x 2 m (2x2 tiles)
   wood: ['#c9782f', '#b96a25'],
-  purple: ['#5b2a86', '#6a34a0'],
-  concrete: ['#7c8497', '#8a93a8'],
-  safety: ['#dff7e8', '#c2eed6'],
-  kitchen: ['#ffe9a0', '#fff6e0'],
 };
 
 export function buildStatic() {
@@ -90,7 +86,7 @@ export function buildStatic() {
   // janelas (noite): [lado, t0, t1]
   const windows = [
     ['R', 0.8, 2.8], ['R', 9.2, 11.2], ['R', 13, 15], ['R', 17.2, 19.2], ['R', 20.6, 23.4],
-    ['L', 0.8, 2.6], ['L', 3.4, 5.2], ['L', 6.6, 8.4], ['L', 9.2, 11], ['L', 25, 27], ['L', 27.8, 29.8],
+    ['L', 0.8, 2.6], ['L', 12.6, 14.2], ['L', 15.6, 17.2], ['L', 3.4, 5.2], ['L', 6.6, 8.4], ['L', 9.2, 11], ['L', 25, 27], ['L', 27.8, 29.8],
   ];
   for (const [side, t0, t1] of windows) {
     quad(side, t0, t1, 22, 56, K.paper);
@@ -133,10 +129,6 @@ export function buildStatic() {
     quad('R', t0 + 0.08, t1 - 0.08, 28, 48, K.pink);
     quad('R', t0 + 0.2, t1 - 0.2, 32, 44, K.yellow);
   }
-  // pegboard de ferramentas (componentes)
-  quad('L', 13, 17, 22, 52, '#7a4b2a');
-  quad('L', 13.1, 16.9, 24, 50, '#c0621f');
-  for (let i = 0; i < 6; i++) wline('L', 13.4 + i * 0.6, 30 + (i % 3) * 5, 13.4 + i * 0.6, 40 + (i % 2) * 6, i % 2 ? '#2bc8ff' : '#ffd426');
   // posters de segurança
   quad('L', 18.7, 20.3, 26, 52, '#0f8a5a');
   quad('L', 18.8, 20.2, 28, 50, '#3dff8b');
@@ -178,12 +170,12 @@ export function buildStatic() {
   for (let x = 0; x < W; x++) {
     for (let y = 0; y < H; y++) {
       const room = roomAt(x + 0.5, y + 0.5);
-      const kind = room ? room.floor : 'office';
+      const kind = room ? room.floor : 'porcelain';
       const [c1, c2] = FLOORS[kind];
       const [tx, ty] = project(x, y);
       const cx = tx + OFF_X;
       const cy = ty + OFF_Y;
-      const base = (x + y) % 2 ? c2 : c1;
+      const base = (((x >> 1) + (y >> 1)) & 1) ? c2 : c1;
       const top = [cx, cy];
       const right = [cx + HX, cy + HY];
       const bottom = [cx, cy + 2 * HY];
@@ -196,11 +188,12 @@ export function buildStatic() {
           const b = [right[0] + (bottom[0] - right[0]) * t, right[1] + (bottom[1] - right[1]) * t];
           line(g, a[0], a[1], b[0], b[1], 'rgba(90,40,10,0.35)');
         }
-      } else if (kind === 'kitchen') {
-        line(g, top[0], top[1], right[0], right[1], 'rgba(200,150,60,0.4)');
-        line(g, top[0], top[1], left[0], left[1], 'rgba(200,150,60,0.4)');
+      } else {
+        // rejunte entre as peças de 2 m
+        if (x % 2 === 0) line(g, top[0], top[1], left[0], left[1], 'rgba(160,128,72,0.55)');
+        if (y % 2 === 0) line(g, top[0], top[1], right[0], right[1], 'rgba(160,128,72,0.55)');
       }
-      const dots = kind === 'concrete' ? 14 : kind === 'safety' || kind === 'kitchen' ? 3 : 9;
+      const dots = kind === 'wood' ? 9 : 2;
       for (let i = 0; i < dots; i++) {
         const dx = Math.round((rnd() - 0.5) * 2 * (HX - 5));
         const maxDy = HY - 2 - Math.abs(dx) / 2;
@@ -209,23 +202,8 @@ export function buildStatic() {
       }
     }
   }
-  // emendas do carpete só no salão
-  for (let i = 0; i <= W; i++) {
-    const a = project(i, 0);
-    const b = project(i, H);
-    line(g, a[0] + OFF_X, a[1] + OFF_Y, b[0] + OFF_X, b[1] + OFF_Y, 'rgba(10,14,26,0.12)');
-  }
-  for (let i = 0; i <= H; i++) {
-    const a = project(0, i);
-    const b = project(W, i);
-    line(g, a[0] + OFF_X, a[1] + OFF_Y, b[0] + OFF_X, b[1] + OFF_Y, 'rgba(10,14,26,0.12)');
-  }
-
   // detalhes de piso por sala
   const fr = (x0, y0, x1, y1, color) => floorRect(g, OFF_X, OFF_Y, x0, y0, x1, y1, color);
-  fr(13.2, 1.1, 18.8, 4.9, '#ffd426'); // tapete do diretor (moldura dourada)
-  fr(13.4, 1.3, 18.6, 4.7, '#8b3bb8');
-  fr(14, 1.9, 18, 4.1, '#a24ad4');
   fr(3.4, 4.7, 8.6, 5.2, '#e0954e'); // faixa clara na entrada da reunião
   for (let i = 0; i < 6; i++) {
     fr(8.15, 14.2 + i * 0.5, 8.6, 14.45 + i * 0.5, i % 2 ? '#0b0e1a' : '#ffd426'); // faixa de perigo na porta de componentes

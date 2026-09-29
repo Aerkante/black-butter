@@ -83,12 +83,12 @@ export class Renderer {
       const center = spr.kind === 'center';
       const ax = center ? p.x + p.w / 2 : p.x;
       const ay = center ? p.y + p.h / 2 : p.y;
-      const depth = box ? p.x + p.w / 2 + p.y + p.h / 2 + 0.2 : ax + ay;
+      const depth = box ? p.x + p.w / 2 + p.y + p.h / 2 + (p.t === 'totem' ? 2.5 : 0.2) : ax + ay; // o totem fica colado na parede: desenha por cima dela
       this.propList.push({ p, spr, ax, ay, depth });
       const sec = SECTORS[p.sector];
       if (sec || p.label) {
         const lab = labelSprite(sec ? sec.short : p.label, sec ? sec.color : p.color || '#7FE3FF');
-        this.propList.push({ label: lab, ax: p.x + p.w / 2, ay: p.y + p.h / 2, depth: 999, isLabel: true });
+        this.propList.push({ label: lab, ax: p.x + p.w / 2, ay: p.y + p.h / 2, depth: 999, isLabel: true, lift: p.t === 'totem' ? 78 : 50 });
       }
     }
     this.wallChunks = [];
@@ -219,7 +219,7 @@ export class Renderer {
   blitProp(e, ox, oy) {
     const [sx, sy] = project(e.ax, e.ay);
     if (e.isLabel) {
-      this.g.drawImage(e.label.canvas, Math.round(ox + sx - e.label.ax), Math.round(oy + sy - 50));
+      this.g.drawImage(e.label.canvas, Math.round(ox + sx - e.label.ax), Math.round(oy + sy - e.lift));
       return;
     }
     this.g.drawImage(e.spr.canvas, Math.round(ox + sx - e.spr.ax), Math.round(oy + sy - e.spr.ay));

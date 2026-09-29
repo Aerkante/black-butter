@@ -259,11 +259,11 @@ test('jogador não atravessa obstáculos nem sai do mapa', () => {
   const a = add(m, 'Ana');
   m.state = 'break';
   m.stateT = 999;
-  a.x = 0.9;
-  a.y = 7.8;
+  a.x = 1.5;
+  a.y = 8.2;
   m.input(a, { dx: 1, dy: 0 });
   run(m, 3);
-  assert.ok(a.x < 1.3, 'parou na mesa (1.5..3.5)');
+  assert.ok(a.x < 1.8, 'parou no braço da baia (2.0..3.0)');
   a.x = 1;
   a.y = 1;
   m.input(a, { dx: -1, dy: -1 });
@@ -601,4 +601,33 @@ test('ataque básico: nenhuma classe é fraca a ponto de só o Dev servir', () =
     const dps = CLASSES[id].atk.dmg / CLASSES[id].atk.cd;
     assert.ok(dps >= base * 0.45, `${id}: dps ${dps.toFixed(1)} vs dev ${base.toFixed(1)}`);
   }
+});
+
+test('cheats secretos: valem só no servidor e tiram a rodada do ranking', () => {
+  const { m, log } = mk();
+  const a = add(m, 'Ana');
+  assert.equal(m.cheat(a, 'abracadabra').ok, false);
+  assert.equal(a.cheated, false, 'código inválido não marca');
+  a.invuln = 0;
+  assert.equal(m.cheat(a, ' S-U-D-O ').ok, true);
+  assert.equal(a.cheated, true);
+  m.hurtPlayer(a, 999);
+  assert.equal(a.hp, a.maxHp, 'sudo: modo deus');
+  m.cheat(a, 'sudo');
+  m.hurtPlayer(a, 999);
+  assert.ok(a.downed);
+  m.cheat(a, 'hotfix');
+  assert.equal(a.downed, false);
+  assert.equal(m.server.hp, m.server.max);
+  m.wave = 1;
+  m.makeEnemy('bug', 5, 5, 0);
+  m.cheat(a, 'rmrf');
+  assert.equal(m.enemies.length, 0);
+  m.cheat(a, 'segfault');
+  assert.ok(m.enemies.some((e) => e.type === 'boss' || e.def?.name));
+  a.score = 500;
+  m.flush(a);
+  m.finishRun(a);
+  assert.equal(log.progress.length, 0, 'sem pontos no ranking');
+  assert.equal(log.runs.length, 0);
 });

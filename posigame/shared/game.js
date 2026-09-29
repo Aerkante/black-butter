@@ -13,10 +13,10 @@ const wallV = (x, y, len) => ({ x: x - T / 2, y, w: T, h: len }); // divisória 
 
 const ROOMS = [
   { id: 'reuniao', name: 'REUNIÃO', x: 0, y: 0, w: 12, h: 6, floor: 'wood', plate: '#3B4DC4' },
-  { id: 'diretor', name: 'DIRETOR', x: 12, y: 0, w: 8, h: 6, floor: 'purple', plate: '#7A3BC4' },
-  { id: 'componentes', name: 'COMPONENTES', x: 0, y: 12, w: 9, h: 6, floor: 'concrete', plate: '#8A93A8' },
-  { id: 'seguranca', name: 'SEGURANÇA', x: 0, y: 18, w: 9, h: 6, floor: 'safety', plate: '#1FB86A' },
-  { id: 'copa', name: 'COPA', x: 0, y: 24, w: 12, h: 8, floor: 'kitchen', plate: '#FF8A1F' },
+  { id: 'diretor', name: 'DIRETOR', x: 12, y: 0, w: 8, h: 6, floor: 'porcelain', plate: '#7A3BC4' },
+  { id: 'componentes', name: 'COMPONENTES', x: 0, y: 12, w: 9, h: 6, floor: 'porcelain', plate: '#8A93A8' },
+  { id: 'seguranca', name: 'SEGURANÇA', x: 0, y: 18, w: 9, h: 6, floor: 'porcelain', plate: '#1FB86A' },
+  { id: 'copa', name: 'COPA', x: 0, y: 24, w: 12, h: 8, floor: 'porcelain', plate: '#FF8A1F' },
 ];
 
 const WALLS = [
@@ -32,43 +32,50 @@ const WALLS = [
 // Setores da empresa (cada mesa do salão pertence a um deles)
 export const SECTORS = {
   secretaria: { name: 'Secretária executiva', short: 'SECRETARIA', color: '#B18CFF', where: 'perto da sala do diretor' },
-  fiscal: { name: 'Fiscal', short: 'FISCAL', color: '#2BC8FF', where: 'à esquerda da secretária, fileira de cima' },
-  sesmt: { name: 'SESMT', short: 'SESMT', color: '#3DFF8B', where: 'à esquerda da secretária, fileira de baixo' },
+  fiscal: { name: 'Fiscal', short: 'FISCAL', color: '#2BC8FF', where: 'baia do canto esquerdo, fileira de cima' },
+  sesmt: { name: 'SESMT', short: 'SESMT', color: '#3DFF8B', where: 'baia ao lado da de Fiscal' },
+  cadastro: { name: 'Cadastro', short: 'CADASTRO', color: '#7FE3FF', where: 'baia ao lado da de SESMT, em frente à porta do diretor' },
   projetos: { name: 'Projetos', short: 'PROJETOS', color: '#FF8A1F', where: 'logo abaixo da secretária' },
   desenvolvimento: { name: 'Desenvolvimento', short: 'DESENV.', color: '#FFD426', where: 'abaixo de Projetos' },
-  financeiro: { name: 'Financeiro', short: 'FINANCEIRO', color: '#FF4FA3', where: 'no fim da coluna, perto da copa' },
-  cadastro: { name: 'Cadastro', short: 'CADASTRO', color: '#7FE3FF', where: 'sala de componentes, mesa de cima à esquerda' },
+  financeiro: { name: 'Financeiro', short: 'FINANCEIRO', color: '#FF4FA3', where: 'no fim da coluna, perto da copa e do ponto' },
 };
 
-const DESKS = [
-  [1.5, 7.3, 'fiscal'], [7.5, 7.3, 'fiscal'], [1.5, 9.6, 'sesmt'], [7.4, 9.6, 'sesmt'],
-  [19, 8.8, 'secretaria'], [19, 13.3, 'projetos'], [19, 17.6, 'desenvolvimento'], [19, 21, 'financeiro'],
+// Baias em "+": cada uma tem 4 lugares (um em cada canto do "+"). A mesa da secretária é a única individual.
+const BAIA = 3.8; // lado do "+" (braços de 1 tile; cada canto tem 1,4 tile livre para a cadeira)
+const BAIAS = [
+  [0.6, 8, 'fiscal'], [6.2, 8, 'sesmt'], [12.4, 8, 'cadastro'],
+  [18, 11, 'projetos'], [18, 16, 'desenvolvimento'], [18, 21, 'financeiro'],
 ];
 const solid = (t, x, y, w, h, extra = {}) => ({ t, x, y, w, h, solid: true, ...extra });
 const deco = (t, x, y) => ({ t, x, y, solid: false });
+const baia = (x, y, sector) => {
+  const a = (BAIA - 1) / 2;
+  return [
+    solid('baia', x, y, BAIA, BAIA, { sector, rects: [{ x: x + a, y, w: 1, h: BAIA }, { x, y: y + a, w: BAIA, h: 1 }] }),
+    ...[[0.7, 0.7], [BAIA - 0.7, 0.7], [0.7, BAIA - 0.7], [BAIA - 0.7, BAIA - 0.7]].map(([dx, dy]) => deco('chair', x + dx, y + dy)),
+  ];
+};
 
 const PROPS = [
   // salão
-  ...DESKS.flatMap(([x, y, sector]) => [solid('desk', x, y, 2, 1, { sector }), deco('chair', x + 1, y + 1.75)]),
-  solid('printer', 10.4, 8, 1, 1),
-  deco('plant', 0.7, 6.7), deco('plant', 9.5, 6.6), deco('plant', 23.3, 6.5), deco('plant', 23.3, 31), deco('plant', 10.2, 30.8), deco('plant', 12.7, 13), deco('plant', 12.7, 25),
-  deco('bin', 5.2, 9), deco('bin', 21.3, 11.5), deco('bin', 21.3, 19.6), deco('bin', 12.6, 20.5),
-  solid('cooler', 22.6, 11.9, 0.9, 0.9),
+  ...BAIAS.flatMap(([x, y, sector]) => baia(x, y, sector)),
+  solid('desk', 19.4, 8.6, 2, 1, { sector: 'secretaria' }), deco('chair', 20.4, 10.35),
+    deco('plant', 0.7, 6.7), deco('plant', 9.5, 6.6), deco('plant', 23.3, 6.5), deco('plant', 23.3, 31), deco('plant', 10.2, 30.8), deco('plant', 12.7, 13), deco('plant', 12.7, 30.6),
+  deco('bin', 17, 10.3), deco('bin', 22.8, 16.2), deco('bin', 12.6, 20.5),
+  solid('cooler', 22.6, 7.4, 0.9, 0.9),
   // sala de reunião
   solid('table6', 3, 1.8, 6, 2),
   ...[4, 5.4, 6.8, 8.2].flatMap((x) => [deco('chair', x, 1.3), deco('chair', x, 4.5)]),
   deco('chair', 2.2, 2.8), deco('chair', 9.8, 2.8),
   deco('plant', 0.8, 5.2), deco('plant', 11.2, 5.2),
-  // sala do diretor
-  solid('bigdesk', 13.8, 2.2, 3.2, 1.3), deco('chair', 15.4, 1.5), deco('chair', 14.4, 4.1), deco('chair', 16.4, 4.1),
-  solid('sofa', 17.4, 4.3, 2.2, 1),
-  solid('bookshelf', 17.2, 0.1, 2.6, 0.7), solid('bookshelf', 12.5, 0.1, 2.4, 0.7),
-  deco('plant', 12.9, 5.2), deco('plant', 19.3, 5.2),
-  // sala de componentes
-  // mesas sem cadeira, com componentes em cima; a de cima à esquerda é do Cadastro; mesa redonda no meio
-  solid('rackY', 0.15, 12.5, 0.8, 3), solid('rackY', 0.15, 15.6, 0.8, 2.2),
-  solid('workbench', 1.7, 13.3, 2.8, 1.1, { sector: 'cadastro' }), solid('workbench', 5.4, 13.3, 2.8, 1.1),
-  solid('roundtable', 2.9, 15.4, 1.9, 1.9), solid('crate', 6.6, 16.8, 1, 1), solid('crate', 7.6, 16.8, 1, 1),
+  // sala do diretor (simples: uma mesa, duas cadeiras e uma planta)
+  solid('bigdesk', 14.4, 1.6, 3.2, 1.3), deco('chair', 16, 0.95), deco('chair', 16, 3.6),
+  deco('plant', 12.9, 5.2),
+  // sala de componentes: três mesas em U com componentes, mesa redonda com 3 cadeiras, lixeira, sem armários
+  solid('workbench', 2.3, 12.5, 4.4, 1.1), solid('workbench', 0.5, 12.5, 1.1, 4), solid('workbench', 7.7, 12.5, 1.1, 2),
+  solid('roundtable', 3.6, 15.2, 1.8, 1.8),
+  deco('chair', 3.0, 16.1), deco('chair', 6.0, 16.1), deco('chair', 4.5, 17.55),
+  deco('bin', 8.3, 14.7),
   // sala de segurança do trabalho
   solid('lockerY', 0.15, 18.5, 0.7, 3.6), solid('table', 4.2, 20.2, 2.6, 1.2),
   deco('chair', 4.8, 19.6), deco('chair', 6.2, 19.6), deco('chair', 5, 22.1), deco('chair', 6.4, 22.1),
@@ -79,8 +86,8 @@ const PROPS = [
   // mesa comprida na parte de baixo da copa
   solid('tableLong', 2.6, 30.3, 6.2, 1.3), ...[3.4, 4.9, 6.4, 7.9].map((x) => deco('chair', x, 29.7)),
   solid('cooler', 10.9, 25.1, 0.9, 0.9),
-  // totem de ponto, na parede da copa, do lado direito depois da porta
-  solid('totem', 12.45, 30.6, 0.8, 0.8, { label: 'PONTO', color: '#7FE3FF' }),
+  // ponto eletrônico: caixinha na parede da copa (lado de fora), do lado do Financeiro
+  solid('totem', 12.2, 25.4, 0.22, 0.6, { label: 'PONTO', color: '#7FE3FF' }),
 ];
 
 export const MAP = {
@@ -108,7 +115,7 @@ export const MAP = {
 
 export function obstacles() {
   const rects = [MAP.server, ...MAP.walls];
-  for (const p of MAP.props) if (p.solid) rects.push({ x: p.x, y: p.y, w: p.w, h: p.h });
+  for (const p of MAP.props) if (p.solid) rects.push(...(p.rects || [{ x: p.x, y: p.y, w: p.w, h: p.h }]));
   return rects;
 }
 const OBS = obstacles();
