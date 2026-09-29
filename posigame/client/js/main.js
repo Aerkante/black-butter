@@ -235,7 +235,7 @@ net.on('s', (snap) => {
   if (phase !== 'game') return;
   world.pushSnap(snap, performance.now() / 1000);
   if (snap.st === 2) music.play(null);
-  else music.play(snap.e.some((e) => e[1] === 5 && !(e[6] & 1)) ? 'boss' : 'battle', { calm: snap.st === 0 });
+  else music.play(snap.e.some((e) => e[1] === 5 && !(e[6] & 1)) ? 'boss' : 'battle', { calm: snap.st === 0, seed: snap.st === 0 ? snap.w : snap.w - 1 });
   ui.updateHud(world, snap, { rtt: net.rtt, fps: perf.fps, q: QUALITY[renderer.quality].name });
   if (snap.st === 2 && snap.over) {
     over = true;
@@ -286,6 +286,7 @@ function frame(nowMs) {
   last = nowMs;
   const now = nowMs / 1000;
   world.predict(dt, input.read());
+  world.stepFx(dt, now, cfg.parts);
   renderer.draw(world, world.view(now), now, dt);
   world.prune(now);
   adaptQuality(nowMs);

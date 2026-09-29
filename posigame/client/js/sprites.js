@@ -61,7 +61,7 @@ function drawCharacter(g, look, pose) {
   const long = look.outfit !== 0; // camiseta tem manga curta
 
   // mochila (atrás do corpo)
-  if (look.backpack) px(-1, 7 + bob, 2, 4, '#E5484D');
+  if (look.backpack) px(-1, 7 + bob, 2, 4, '#ff3b4e');
 
   // pernas
   const lly = pose.lly || 0;
@@ -79,7 +79,7 @@ function drawCharacter(g, look, pose) {
     } else {
       px(lx, legTop + off, 2, legH, pants);
     }
-    px(lx, 15 + off, 2, 1, '#1B1F2B');
+    px(lx, 15 + off, 2, 1, '#0b0e1a');
   }
   if (!A) {
     px(1, 11, 6, skirt ? 3 : 2, pants);
@@ -91,17 +91,17 @@ function drawCharacter(g, look, pose) {
   px(3, 6 + bob, 2, 1, skin);
   const hairRects = (A ? HAIR_A : HAIR_B)[look.hairStyle];
   for (const [x, y, w, h] of hairRects) px(x, y + bob, w, h, hair);
-  px(2, 3 + bob, 1, 1, '#1B1F2B');
-  px(5, 3 + bob, 1, 1, '#1B1F2B');
+  px(2, 3 + bob, 1, 1, '#0b0e1a');
+  px(5, 3 + bob, 1, 1, '#0b0e1a');
   px(3, 5 + bob, 2, 1, '#B5654E');
   if (look.glasses === 1) {
-    px(1, 3 + bob, 6, 1, '#1B1F2B');
+    px(1, 3 + bob, 6, 1, '#0b0e1a');
     px(2, 3 + bob, 1, 1, '#CFE9FF');
     px(5, 3 + bob, 1, 1, '#CFE9FF');
   } else if (look.glasses === 2) {
     px(1, 3 + bob, 3, 2, '#0D0F16');
     px(4, 3 + bob, 3, 2, '#0D0F16');
-    px(1, 3 + bob, 1, 1, '#4FC3F7');
+    px(1, 3 + bob, 1, 1, '#2bc8ff');
   }
 
   // tronco
@@ -112,18 +112,18 @@ function drawCharacter(g, look, pose) {
   px(tx, 7 + bob, tw, th, shirt);
   px(tx, 6 + th + bob, tw, 1, 'rgba(0,0,0,0.2)');
   if (look.outfit === 1) {
-    px(3, 7 + bob, 2, 1, '#F7F3E8'); // colarinho
+    px(3, 7 + bob, 2, 1, '#fff6e0'); // colarinho
     px(4, 8 + bob, 1, th - 2, 'rgba(0,0,0,0.25)'); // botões
   } else if (look.outfit === 2) {
     px(tx + 1, 6 + th + bob - 1, tw - 2, 1, 'rgba(0,0,0,0.25)'); // bolso
   } else if (jaleco) {
-    px(3, 7 + bob, 2, 2, '#F7F3E8');
+    px(3, 7 + bob, 2, 2, '#fff6e0');
     px(tx + tw - 2, 9 + bob, 1, 1, '#4C5BA8');
   }
   if (look.badge) {
     const bx = A ? 5 : 4;
-    px(bx, 8 + bob, 1, 2, '#F7F3E8');
-    px(bx, 8 + bob, 1, 1, '#FFD25A');
+    px(bx, 8 + bob, 1, 2, '#fff6e0');
+    px(bx, 8 + bob, 1, 1, '#ffd426');
   }
 
   // braços
@@ -180,13 +180,13 @@ export function characterFrame(look, poseName) {
 
 const ENEMY_DRAW = {
   bug(g, f) {
-    const c = '#E5484D';
+    const c = '#ff3b4e';
     const by = f ? -1 : 0;
     const gy = f ? 1 : 0;
     r(g, c, 3, 3 + by, 6, 4);
-    r(g, '#F7F3E8', 4, 4 + by, 1, 1);
-    r(g, '#F7F3E8', 7, 4 + by, 1, 1);
-    r(g, '#1B1F2B', 5, 6 + by, 2, 1);
+    r(g, '#fff6e0', 4, 4 + by, 1, 1);
+    r(g, '#fff6e0', 7, 4 + by, 1, 1);
+    r(g, '#0b0e1a', 5, 6 + by, 2, 1);
     r(g, c, 3 + f, 1 + by, 1, 1);
     r(g, c, 8 + f, 1 + by, 1, 1);
     r(g, c, 4 + f, 2 + by, 1, 1);
@@ -194,49 +194,49 @@ const ENEMY_DRAW = {
     for (const [x, y] of [[2, 4], [9, 4], [2, 6], [9, 6], [3, 7], [8, 7]]) r(g, c, x, y + gy, 1, 1);
   },
   leak(g, f) {
-    const c = '#6BE38A';
+    const c = '#3dff8b';
     const by = f ? 1 : 0;
     r(g, c, 4, 2 + by, 4, 1);
     r(g, c, 3, 3 + by, 6, 4);
     r(g, c, 2, 4 + by, 1, 2);
     r(g, c, 9, 4 + by, 1, 2);
     r(g, c, 4, 7 + by, 4, 1);
-    r(g, '#1B1F2B', 4, 4 + by, 1, 1);
-    r(g, '#1B1F2B', 7, 4 + by, 1, 1);
-    r(g, '#1B1F2B', 5, 6 + by, 2, 1);
+    r(g, '#0b0e1a', 4, 4 + by, 1, 1);
+    r(g, '#0b0e1a', 7, 4 + by, 1, 1);
+    r(g, '#0b0e1a', 5, 6 + by, 2, 1);
     r(g, c, 8, 8 + f, 1, 1);
   },
   clock(g, f) {
     const sx = f ? 1 : -1;
-    r(g, '#F7F3E8', 3 + sx, 2, 8, 7);
-    r(g, '#E5484D', 7 + sx, 3, 1, 3);
-    r(g, '#E5484D', 7 + sx, 5, 2, 1);
-    r(g, '#1B1F2B', 4 + sx, 9, 1, 1);
-    r(g, '#1B1F2B', 9 + sx, 9, 1, 1);
-    r(g, '#E5484D', 4 + sx, 1, 2, 1);
-    r(g, '#E5484D', 8 + sx, 1, 2, 1);
+    r(g, '#fff6e0', 3 + sx, 2, 8, 7);
+    r(g, '#ff3b4e', 7 + sx, 3, 1, 3);
+    r(g, '#ff3b4e', 7 + sx, 5, 2, 1);
+    r(g, '#0b0e1a', 4 + sx, 9, 1, 1);
+    r(g, '#0b0e1a', 9 + sx, 9, 1, 1);
+    r(g, '#ff3b4e', 4 + sx, 1, 2, 1);
+    r(g, '#ff3b4e', 8 + sx, 1, 2, 1);
   },
   mail(g, f) {
     const by = f ? -1 : 0;
-    r(g, '#F7F3E8', 3, 3 + by, 8, 6);
+    r(g, '#fff6e0', 3, 3 + by, 8, 6);
     if (f) {
-      r(g, '#B8B09A', 4, 1 + by, 6, 1);
-      r(g, '#B8B09A', 3, 2 + by, 1, 2);
-      r(g, '#B8B09A', 10, 2 + by, 1, 2);
+      r(g, '#d6c08a', 4, 1 + by, 6, 1);
+      r(g, '#d6c08a', 3, 2 + by, 1, 2);
+      r(g, '#d6c08a', 10, 2 + by, 1, 2);
     } else {
-      r(g, '#B8B09A', 3, 3, 8, 1);
+      r(g, '#d6c08a', 3, 3, 8, 1);
       for (let i = 0; i < 3; i++) {
-        r(g, '#B8B09A', 4 + i, 4 + i, 1, 1);
-        r(g, '#B8B09A', 9 - i, 4 + i, 1, 1);
+        r(g, '#d6c08a', 4 + i, 4 + i, 1, 1);
+        r(g, '#d6c08a', 9 - i, 4 + i, 1, 1);
       }
     }
-    r(g, '#E5484D', 10, 2 + by, 2, 2);
+    r(g, '#ff3b4e', 10, 2 + by, 2, 2);
   },
   cal(g, f) {
     const by = f ? -1 : 0;
-    r(g, '#F7F3E8', 3, 2 + by, 8, 8);
-    r(g, '#E5484D', 3, 2 + by, 8, 2);
-    for (const [x, y] of [[4, 5], [7, 5], [4, 7], [7, 7]]) r(g, '#1B1F2B', x, y + by, 2, 1);
+    r(g, '#fff6e0', 3, 2 + by, 8, 8);
+    r(g, '#ff3b4e', 3, 2 + by, 8, 2);
+    for (const [x, y] of [[4, 5], [7, 5], [4, 7], [7, 7]]) r(g, '#0b0e1a', x, y + by, 2, 1);
   },
 };
 
@@ -284,22 +284,79 @@ export function pickupFrame(kind) {
   const key = `p|${kind}`;
   let f = cache.get(key);
   if (f) return f;
-  const [c, g] = make(10, 10);
-  if (kind === 0) {
-    // pizza
-    r(g, '#FFD25A', 2, 3, 6, 4);
-    r(g, '#FF9E44', 3, 7, 4, 1);
-    r(g, '#E5484D', 3, 4, 1, 1);
-    r(g, '#E5484D', 6, 5, 1, 1);
-    r(g, '#B57B4A', 2, 2, 6, 1);
-  } else {
-    // café
-    r(g, '#F7F3E8', 2, 3, 5, 5);
-    r(g, '#5B3A29', 2, 3, 5, 2);
-    r(g, '#F7F3E8', 7, 4, 1, 3);
-    r(g, '#8FA3C7', 1, 8, 7, 1);
-  }
-  f = { canvas: finish(c), w: 10, h: 10, ax: 5, ay: 9 };
+  const [c, g] = make(12, 12);
+  g.translate(1, 1);
+  const art = [
+    // 0 pizza
+    () => {
+      r(g, '#E8873A', 1, 1, 8, 2);
+      for (const [x, y, w] of [[2, 3, 6], [2, 4, 5], [3, 5, 4], [3, 6, 3], [4, 7, 2], [4, 8, 1]]) r(g, '#FFD426', x, y, w, 1);
+      for (const [x, y] of [[3, 3], [5, 4], [4, 6]]) r(g, '#FF3B4E', x, y, 1, 1);
+    },
+    // 1 café
+    () => {
+      r(g, '#FFF6E0', 2, 3, 5, 5);
+      r(g, '#7A3B14', 2, 3, 5, 2);
+      r(g, '#FFF6E0', 7, 4, 2, 1);
+      r(g, '#FFF6E0', 8, 5, 1, 2);
+      r(g, '#FFF6E0', 7, 6, 1, 1);
+      r(g, '#D9C9A0', 3, 0, 1, 2);
+      r(g, '#D9C9A0', 5, 1, 1, 2);
+      r(g, '#3B4DC4', 1, 8, 8, 1);
+    },
+    // 2 crachá VIP (escudo)
+    () => {
+      r(g, '#2BC8FF', 2, 1, 6, 1);
+      r(g, '#2BC8FF', 1, 2, 8, 4);
+      r(g, '#2BC8FF', 2, 6, 6, 1);
+      r(g, '#2BC8FF', 3, 7, 4, 1);
+      r(g, '#2BC8FF', 4, 8, 2, 1);
+      r(g, '#FFF6E0', 4, 3, 2, 3);
+      r(g, '#FFF6E0', 3, 4, 4, 1);
+    },
+    // 3 energético (lata)
+    () => {
+      r(g, '#FFD426', 3, 1, 4, 8);
+      r(g, '#D9C9A0', 3, 1, 4, 1);
+      r(g, '#0B0E1A', 3, 4, 4, 3);
+      r(g, '#FFD426', 5, 4, 1, 1);
+      r(g, '#FFD426', 4, 5, 2, 1);
+      r(g, '#FFD426', 4, 6, 1, 1);
+    },
+    // 4 deploy (bomba)
+    () => {
+      r(g, '#23297A', 3, 2, 4, 1);
+      r(g, '#23297A', 2, 3, 6, 6);
+      r(g, '#23297A', 3, 9, 4, 0);
+      r(g, '#FF3B4E', 2, 6, 6, 1);
+      r(g, '#FFF6E0', 3, 4, 1, 1);
+      r(g, '#D9C9A0', 6, 1, 1, 1);
+      r(g, '#FFD426', 7, 0, 2, 1);
+    },
+    // 5 ar-condicionado (floco de neve)
+    () => {
+      r(g, '#7FE3FF', 4, 0, 2, 10);
+      r(g, '#7FE3FF', 0, 4, 10, 2);
+      for (const [x, y] of [[1, 1], [2, 2], [7, 1], [6, 2], [1, 8], [2, 7], [7, 8], [6, 7]]) r(g, '#7FE3FF', x, y, 1, 1);
+      r(g, '#FFF6E0', 4, 4, 2, 2);
+    },
+    // 6 bônus (estrela)
+    () => {
+      for (const [x, y, w] of [[4, 0, 2], [4, 1, 2], [3, 2, 4], [0, 3, 10], [1, 4, 8], [2, 5, 6], [3, 6, 4], [2, 7, 2], [6, 7, 2], [1, 8, 2], [7, 8, 2]]) r(g, '#FFE45C', x, y, w, 1);
+      r(g, '#FFF6E0', 4, 3, 2, 2);
+    },
+    // 7 backup (disquete)
+    () => {
+      r(g, '#3DFF8B', 1, 1, 8, 8);
+      r(g, '#FFF6E0', 2, 1, 6, 3);
+      r(g, '#0B0E1A', 3, 6, 4, 3);
+      r(g, '#3DFF8B', 5, 7, 1, 1);
+      r(g, '#0B0E1A', 7, 1, 1, 2);
+    },
+  ];
+  (art[kind] || art[0])();
+  g.translate(-1, -1);
+  f = { canvas: finish(c), w: 12, h: 12, ax: 6, ay: 11 };
   cache.set(key, f);
   return f;
 }
@@ -312,35 +369,35 @@ export function classIcon(cls) {
   const [c, g] = make(7, 7);
   const draws = {
     dev: () => {
-      r(g, '#4FC3F7', 0, 1, 1, 1);
-      r(g, '#4FC3F7', 1, 2, 1, 1);
-      r(g, '#4FC3F7', 0, 3, 1, 1);
-      r(g, '#4FC3F7', 4, 1, 1, 3);
-      r(g, '#4FC3F7', 5, 2, 1, 1);
+      r(g, '#2bc8ff', 0, 1, 1, 1);
+      r(g, '#2bc8ff', 1, 2, 1, 1);
+      r(g, '#2bc8ff', 0, 3, 1, 1);
+      r(g, '#2bc8ff', 4, 1, 1, 3);
+      r(g, '#2bc8ff', 5, 2, 1, 1);
     },
     qa: () => {
-      r(g, '#FFD25A', 1, 0, 3, 1);
-      r(g, '#FFD25A', 0, 1, 1, 3);
-      r(g, '#FFD25A', 4, 1, 1, 3);
-      r(g, '#FFD25A', 1, 4, 3, 1);
-      r(g, '#FFD25A', 4, 5, 2, 1);
+      r(g, '#ffd426', 1, 0, 3, 1);
+      r(g, '#ffd426', 0, 1, 1, 3);
+      r(g, '#ffd426', 4, 1, 1, 3);
+      r(g, '#ffd426', 1, 4, 3, 1);
+      r(g, '#ffd426', 4, 5, 2, 1);
     },
     ops: () => {
-      r(g, '#6BE38A', 2, 0, 2, 5);
-      r(g, '#6BE38A', 0, 2, 6, 1);
+      r(g, '#3dff8b', 2, 0, 2, 5);
+      r(g, '#3dff8b', 0, 2, 6, 1);
     },
     tank: () => {
-      r(g, '#FF9E44', 0, 0, 6, 3);
-      r(g, '#FF9E44', 1, 3, 4, 1);
-      r(g, '#FF9E44', 2, 4, 2, 1);
+      r(g, '#ff8a1f', 0, 0, 6, 3);
+      r(g, '#ff8a1f', 1, 3, 4, 1);
+      r(g, '#ff8a1f', 2, 4, 2, 1);
     },
     po: () => {
-      r(g, '#FF7EB6', 1, 0, 3, 1);
-      r(g, '#FF7EB6', 0, 1, 1, 1);
-      r(g, '#FF7EB6', 4, 1, 1, 1);
-      r(g, '#FF7EB6', 4, 2, 1, 1);
-      r(g, '#FF7EB6', 2, 3, 2, 1);
-      r(g, '#FF7EB6', 2, 5, 1, 1);
+      r(g, '#ff4fa3', 1, 0, 3, 1);
+      r(g, '#ff4fa3', 0, 1, 1, 1);
+      r(g, '#ff4fa3', 4, 1, 1, 1);
+      r(g, '#ff4fa3', 4, 2, 1, 1);
+      r(g, '#ff4fa3', 2, 3, 2, 1);
+      r(g, '#ff4fa3', 2, 5, 1, 1);
     },
   };
   (draws[cls] || draws.dev)();

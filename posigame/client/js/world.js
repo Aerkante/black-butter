@@ -2,6 +2,7 @@
 // e efeitos visuais gerados a partir dos eventos do servidor.
 import { CLASSES, ENEMY_IDS, MAP, PLAYER_RADIUS, moveEntity } from '/shared/game.js';
 import { sfx } from './sfx.js';
+import { spawnSkill, spawnScope, spawnPickup, step as stepFx } from './skillfx.js';
 
 export const INTERP_S = 0.12;
 
@@ -21,6 +22,11 @@ export class World {
     this.youCls = 'dev';
     this.pred = { x: MAP.safeCenter.x, y: MAP.safeCenter.y, init: false };
     this.fx = { shots: [], texts: [], bursts: [], rings: [], banners: [] };
+    this.effects = [];
+    this.parts = [];
+    this.flashes = [];
+    this.shakeAmp = 4;
+    this.shakeDur = 0.25;
     this.shake = 0;
     this.flash = 0;
     this.limits = { fx: 40 };
@@ -116,7 +122,7 @@ export class World {
         hp: e[4], maxHp: e[5], flags: e[6], grown: e[7],
       };
     });
-    const pickups = b.k.map((k) => ({ id: k[0], kind: k[1], x: k[2], y: k[3] }));
+    const pickups = b.k.map((k) => ({ id: k[0], kind: k[1], x: k[2], y: k[3], left: k[4] }));
     return { players, enemies, pickups, snap: b };
   }
 
@@ -146,7 +152,7 @@ export class World {
           const cls = this.roster.get(ev[1])?.cls || 'dev';
           if (from) {
             this.push(this.fx.shots, {
-              x1: from.x, y1: from.y, x2: ev[2], y2: ev[3], color: CLASSES[cls].color, aoe: ev[4], t0: now, dur: ev[4] ? 0.18 : 0.12,
+              x1: from.x, y1: from.y, x2: ev[2], y2: ev[3], color: CLASSES[cls].color, cls, aoe: ev[4], t0: now, dur: ev[4] ? 0.22 : cls === 'po' ? 0.28 : 0.14,
             });
           }
           if (ev[1] === this.youId) sfx.shot();
@@ -154,7 +160,7 @@ export class World {
         }
         case 'kill': {
           const mine = ev[5] === this.youId;
-          this.push(this.fx.texts, { x: ev[2], y: ev[3], text: `+${ev[4]}`, color: mine ? '#FFD25A' : '#E8E1CF', t0: now, dur: 0.9, small: !mine });
+          this.push(this.fx.texts, { x: ev[2], y: ev[3], text: `+${ev[4]}`, color: mine ? '#ffd426' : '#ffe9b8', t0: now, dur: 0.9, small: !mine });
           this.push(this.fx.bursts, { x: ev[2], y: ev[3], t0: now, dur: 0.3 });
           if (mine || ev[5] === 0) sfx.kill();
           break;
@@ -173,33 +179,35 @@ export class World {
         case 'down':
           sfx.down();
           if (ev[1] === this.youId) navigator.vibrate?.([80, 40, 120]);
-          if (ev[1] === this.youId) this.banner('VOCÊ CAIU', 'Aguarde um DevOps ou PO te reviver', '#E5484D', now, 2.5);
+          if (ev[1] === this.youId) this.banner('VOCÊ CAIU', 'Aguarde um DevOps ou PO te reviver', '#ff3b4e', now, 2.5);
           break;
         case 'rev':
           sfx.revive();
           break;
         case 'wave':
-          this.banner(`ONDA ${ev[1]}`, ev[2] ? 'CHEFE: SEGFAULT!' : '', ev[2] ? '#E5484D' : '#FFD25A', now, 2.2);
+          this.banner(`ONDA ${ev[1]}`, ev[2] ? 'CHEFE: SEGFAULT!' : '', ev[2] ? '#ff3b4e' : '#ffd426', now, 2.2);
           ev[2] ? sfx.boss() : sfx.wave();
           break;
         case 'clear':
-          this.banner(`ONDA ${ev[1]} LIMPA`, `+${ev[2]} de bônus${ev[3] ? ' · ONDA PERFEITA!' : ''}`, '#6BE38A', now, 2.4);
+          this.banner(`ONDA ${ev[1]} LIMPA`, `+${ev[2]} de bônus${ev[3] ? ' · ONDA PERFEITA!' : ''}`, '#3dff8b', now, 2.4);
           sfx.clear();
           break;
         case 'skill': {
           const cls = this.roster.get(ev[1])?.cls || 'dev';
-          this.push(this.fx.rings, { x: ev[3], y: ev[4], color: CLASSES[cls].color, t0: now, dur: 0.5, big: ev[2] === 3 });
-          sfx.skill();
+          spawnSkill(this, ev, now);
+          sfx.skillFx(cls, ev[2]);
           break;
         }
         case 'scope':
-          this.banner('MUDANÇA DE ESCOPO', ['Time causa +50% de dano', 'Bugs congelados por 2 s', 'Bugs mais rápidos!'][ev[1]], ev[1] === 2 ? '#E5484D' : '#FF7EB6', now, 2);
+          spawnScope(this, ev, now);
+          this.banner('MUDANÇA DE ESCOPO', ['Time +50% de dano e golpe em todos', 'Bugs congelados por 2 s', 'Bugs mais rápidos!', 'Meteoros nos bugs!'][ev[1]], ev[1] === 2 ? '#ff3b4e' : '#ff4fa3', now, 2);
           break;
         case 'review':
-          this.banner('SPRINT REVIEW', `+${ev[1]} pontos para todos`, '#FF7EB6', now, 2);
+          this.banner('SPRINT REVIEW', `+${ev[1]} pontos para todos`, '#ff4fa3', now, 2);
           break;
         case 'pick':
-          if (ev[1] === this.youId) sfx.pick();
+          spawnPickup(this, ev, now);
+          if (ev[1] === this.youId) sfx.pickFx(ev[2]);
           break;
         case 'over':
           sfx.over();
@@ -216,5 +224,13 @@ export class World {
     f.bursts = f.bursts.filter((x) => now - x.t0 < x.dur);
     f.rings = f.rings.filter((x) => now - x.t0 < x.dur);
     f.banners = f.banners.filter((x) => now - x.t0 < x.dur);
+    this.effects = this.effects.filter((x) => now - x.t0 < x.dur);
+    if (this.flashes.length && now - this.flashes[0].t0 > this.flashes[0].dur) this.flashes = [];
+  }
+
+  // Avança partículas e efeitos contínuos; cap = máximo de partículas (depende do LOD)
+  stepFx(dt, now, cap) {
+    stepFx(this, dt, now);
+    if (this.parts.length > cap) this.parts.splice(0, this.parts.length - cap);
   }
 }

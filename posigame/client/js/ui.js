@@ -1,5 +1,6 @@
 // Telas em DOM: nick, menu inicial (editor, classe, partidas, ranking), HUD e fim de jogo.
-import { CLASSES, CLASS_IDS } from '/shared/game.js';
+import { CLASSES, CLASS_IDS, PICKUP_TYPES } from '/shared/game.js';
+import { pickTip } from '/shared/tips.js';
 import {
   BODY_NAMES,
   SKIN,
@@ -58,6 +59,7 @@ export class UI {
     for (const id of ['screen-nick', 'screen-home', 'screen-over', 'hud', 'touch', 'joyzone']) $(id).hidden = true;
     document.body.classList.remove('playing');
     clearInterval(this.matchTimer);
+    clearInterval(this.tipTimer);
   }
 
   showNick() {
@@ -81,10 +83,16 @@ export class UI {
     this.renderEditor();
     this.loadRanking();
     this.refreshMatches();
+    this.homeTip();
     this.matchTimer = setInterval(() => {
       this.refreshMatches();
       this.loadRanking();
     }, 5000);
+    this.tipTimer = setInterval(() => this.homeTip(), 9000);
+  }
+
+  homeTip() {
+    $('home-tip').textContent = pickTip(this.cls);
   }
 
   setStats(stats) {
@@ -96,10 +104,11 @@ export class UI {
   showGame(touch) {
     this.hideAll();
     $('hud').hidden = false;
-    $('touch').hidden = !touch;
+    $('touch').hidden = false; // botões de poder também no computador (com a tecla de cada um)
     $('joyzone').hidden = !touch;
     document.body.classList.add('playing');
-    $('hud-hint').textContent = touch ? '' : 'WASD mover · Espaço atacar · 1 2 3 habilidades';
+    $('hud-hint').textContent = touch ? '' : 'WASD mover · botões ou teclas 1 2 3 para os poderes';
+    $('hud-tip').hidden = true;
     this.hudCache = {};
     this.setupSkills();
     $('btn-leave').textContent = 'SAIR';
@@ -155,6 +164,20 @@ export class UI {
       sfx.click();
     });
     paintMus();
+    // faixa de música: Automática ou uma faixa fixa
+    const trackBtn = $('opt-track');
+    const paintTrack = () => (trackBtn.textContent = `FAIXA: ${music.current().name.toUpperCase()}`);
+    trackBtn.addEventListener('click', () => {
+      sfx.click();
+      music.next();
+      paintTrack();
+    });
+    paintTrack();
+    this.paintTrack = paintTrack;
+    music.onTrack((id, name) => {
+      paintTrack();
+      this.toast(`Tocando: ${name}`, 1800);
+    });
     // classes
     const list = $('class-list');
     for (const id of CLASS_IDS) {
@@ -371,7 +394,7 @@ export class UI {
     const draw = () => {
       if (!$('screen-home').hidden) {
         g.clearRect(0, 0, c.width, c.height);
-        g.fillStyle = '#2F3E5C';
+        g.fillStyle = '#2b3a9e';
         g.beginPath();
         g.ellipse(48, 118, 30, 10, 0, 0, Math.PI * 2);
         g.fill();
@@ -407,6 +430,12 @@ export class UI {
     $('rotate-leave').addEventListener('click', () => {
       sfx.click();
       this.cb.onLeave();
+    });
+    $('btn-track').addEventListener('click', () => {
+      sfx.click();
+      const c = music.next();
+      this.paintTrack?.();
+      this.toast(`Música: ${c.name}${c.choice === 'auto' ? ' (troca sozinha a cada onda)' : ''}`, 2200);
     });
     const mb = $('btn-music');
     const paint = () => (mb.textContent = music.isEnabled() ? 'MÚS: ON' : 'MÚS: OFF');
@@ -487,6 +516,32 @@ export class UI {
       team.textContent = '';
       this.hudCache.team = '';
     }
+    // power-ups ativos
+    if (snap.me) {
+      const key = snap.me.bf.map((b) => `${b[0]}:${Math.ceil(b[1])}`).join('|');
+      if (this.hudCache.buffs !== key) {
+        this.hudCache.buffs = key;
+        const box = $('hud-buffs');
+        box.textContent = '';
+        for (const [kind, rem] of snap.me.bf) {
+          const t = PICKUP_TYPES[kind];
+          box.append(el('span', {}, el('i', { style: `background:${t.color}` }), `${t.name} ${Math.ceil(rem)}s`));
+        }
+      }
+    }
+    // dica entre as ondas
+    const tip = $('hud-tip');
+    const between = snap.st === 0 && snap.w > 0;
+    if (between) {
+      if (this.hudCache.tipWave !== snap.w) {
+        this.hudCache.tipWave = snap.w;
+        tip.textContent = '';
+        tip.append(el('b', {}, 'DICA'), pickTip(world.youCls));
+      }
+      tip.hidden = false;
+    } else {
+      tip.hidden = true;
+    }
     // recargas das habilidades
     if (snap.me) {
       const ids = ['btn-s1', 'btn-s2', 'btn-ult'];
@@ -505,6 +560,7 @@ export class UI {
     if (s.hidden) {
       s.hidden = false;
       $('over-title').textContent = 'FIM DE JOGO';
+      $('over-tip').textContent = pickTip(this.playCls || this.cls);
       $('touch').hidden = true;
     }
     $('over-sub').textContent = `${info.reason === 'server' ? 'O servidor caiu!' : 'O time inteiro caiu!'} Onda ${info.wave} · ${fmt(info.score)} pontos`;
@@ -523,7 +579,7 @@ export class UI {
     const s = $('screen-over');
     if (!s.hidden) {
       s.hidden = true;
-      $('touch').hidden = !touch;
+      $('touch').hidden = false;
     }
   }
 }

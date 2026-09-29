@@ -1,25 +1,26 @@
 // Renderizador isométrico 2:1 em canvas de baixa resolução, com escala inteira de pixels
 // (cada pixel lógico vira NxN pixels reais: imagem sempre nítida) e LOD por qualidade.
-import { MAP, CLASSES, ENEMIES } from '/shared/game.js';
+import { MAP, CLASSES, ENEMIES, PICKUP_TYPES } from '/shared/game.js';
 import { characterFrame, enemyFrame, tintedEnemy, pickupFrame, poseFor, classIcon } from './sprites.js';
 import { ellipse, line, diamond, rect, makeCanvas } from './px.js';
 import { buildProps, buildStatic, project, OFF_X, OFF_Y } from './scenery.js';
+import { drawGround, drawAir, drawShot, drawDome, drawShield } from './skillfx.js';
 
 export const QUALITY = [
-  { name: 'Baixa', h: 216, fps: 30, shadows: false, bursts: false, rings: true, bars: false, leds: false },
-  { name: 'Média', h: 243, fps: 45, shadows: true, bursts: true, rings: true, bars: true, leds: true },
-  { name: 'Alta', h: 270, fps: 60, shadows: true, bursts: true, rings: true, bars: true, leds: true },
+  { name: 'Baixa', h: 216, fps: 30, shadows: false, bursts: false, rings: false, bars: false, leds: false, parts: 40 },
+  { name: 'Média', h: 243, fps: 45, shadows: true, bursts: true, rings: true, bars: true, leds: true, parts: 120 },
+  { name: 'Alta', h: 270, fps: 60, shadows: true, bursts: true, rings: true, bars: true, leds: true, parts: 240 },
 ];
 
 const C = {
-  ink: '#10131B',
-  paper: '#F7F3E8',
-  yellow: '#FFD25A',
-  pink: '#FF7EB6',
-  red: '#E5484D',
-  green: '#6BE38A',
-  cyan: '#4FC3F7',
-  hpBack: '#10131B',
+  ink: '#0b0e1a',
+  paper: '#fff6e0',
+  yellow: '#ffd426',
+  pink: '#ff4fa3',
+  red: '#ff3b4e',
+  green: '#3dff8b',
+  cyan: '#2bc8ff',
+  hpBack: '#0b0e1a',
 };
 
 const PX = '"Press Start 2P", monospace';
@@ -133,9 +134,10 @@ export class Renderer {
     const maxY = 304 - H / 2;
     let cx = maxX < minX ? 0 : Math.min(maxX, Math.max(minX, this.cam.x));
     let cy = maxY < minY ? 119 : Math.min(maxY, Math.max(minY, this.cam.y));
-    if (now - world.shake < 0.25 && q.bars) {
-      cx += Math.round((Math.random() - 0.5) * 4);
-      cy += Math.round((Math.random() - 0.5) * 4);
+    if (now - world.shake < world.shakeDur && q.bars) {
+      const k2 = 1 - (now - world.shake) / world.shakeDur;
+      cx += Math.round((Math.random() - 0.5) * world.shakeAmp * k2);
+      cy += Math.round((Math.random() - 0.5) * world.shakeAmp * k2);
     }
     const ox = Math.round(W / 2) - Math.round(cx);
     const oy = Math.round(H / 2) - Math.round(cy);
@@ -149,6 +151,8 @@ export class Renderer {
       const r = 5 + Math.floor(Math.abs(Math.sin(now * 8)) * 6);
       ellipse(g, ox + sx, oy + sy, r * 2, r, C.red);
     }
+
+    drawGround(this, world, view, ox, oy, now, q);
 
     const items = [];
     const P = this.props;
@@ -169,6 +173,7 @@ export class Renderer {
     items.sort((a, b) => a.d - b.d);
     for (const it of items) it.f();
 
+    drawAir(this, world, view, ox, oy, now, q);
     this.drawFx(world, ox, oy, now, q);
     this.drawOverlays(world, view, now);
   }
@@ -190,16 +195,10 @@ export class Renderer {
     if (!snap) return;
     const [hp, max, inv] = snap.srv;
     if (max && hp / max < 0.3 && q.bars && Math.floor(now * 4) % 2) {
-      g.fillStyle = 'rgba(229,72,77,0.28)';
+      g.fillStyle = 'rgba(255,59,78,0.28)';
       g.fillRect(x - 17, y - 36, 34, 52);
     }
-    if (inv) {
-      g.fillStyle = C.cyan;
-      g.fillRect(x - 19, y - 40, 38, 1);
-      g.fillRect(x - 19, y + 18, 38, 1);
-      g.fillRect(x - 19, y - 40, 1, 59);
-      g.fillRect(x + 18, y - 40, 1, 59);
-    }
+    if (inv) drawDome(this, x, y + 8, now, q);
   }
 
   shadow(x, y, rx, ry, q) {
@@ -229,7 +228,7 @@ export class Renderer {
     const ring = ringSprite(cls.color);
     g.drawImage(ring.c, x - ring.ax, y - ring.ay);
     this.shadow(x, y + 1, 7, 3, q);
-    if (p.flags & 32) ellipse(g, x, y - 12, 12, 16, C.cyan);
+    if (p.flags & 32) drawShield(this, x, y, now);
     if (p.look) {
       const invBlink = p.flags & 2 && Math.floor(now * 8) % 2 === 0;
       if (!invBlink) {
@@ -240,6 +239,14 @@ export class Renderer {
         const dh = fr.h * S;
         const dx = -fr.ax * S;
         const dy = -fr.ay * S + (pose === 'down' ? 8 : 0);
+        if (p.flags & 64 && p.moving && q.bursts) {
+          // velocidade: cópias esmaecidas ficam para trás
+          for (let i = 3; i >= 1; i--) {
+            g.globalAlpha = 0.14 * (4 - i);
+            g.drawImage(fr.canvas, x + dx - p.face * i * 9, y + dy, dw, dh);
+          }
+          g.globalAlpha = p.flags & 4 ? 0.35 : 1;
+        }
         if (p.face < 0) {
           g.save();
           g.translate(x, 0);
@@ -290,9 +297,9 @@ export class Renderer {
     const rate = e.type === 'clock' ? 12 : e.type === 'leak' ? 3 : 5;
     const f = frozen || spawning ? 0 : Math.floor(now * rate) % 2;
     let fr = enemyFrame(e.type, f);
-    if (frozen) fr = tintedEnemy(e.type, f, '#4FC3F7');
+    if (frozen) fr = tintedEnemy(e.type, f, '#2bc8ff');
     else if (hit) fr = tintedEnemy(e.type, f, '#FFFFFF');
-    else if (e.type === 'boss') fr = tintedEnemy(e.type, f, '#FF9E44');
+    else if (e.type === 'boss') fr = tintedEnemy(e.type, f, '#ff8a1f');
     const S = e.type === 'boss' ? 4 : e.type === 'minimail' ? 1 : e.type === 'leak' && e.grown >= 2 ? 3 : 2;
     if (spawning) g.globalAlpha = 0.35;
     this.shadow(x, y + 1, 6 * S, 2 * S, q);
@@ -334,13 +341,17 @@ export class Renderer {
 
   drawPickup(k, ox, oy, now) {
     const [sx, sy] = project(k.x, k.y);
+    const g = this.g;
+    if (k.left <= 3 && Math.floor(now * 8) % 2) return; // pisca quando está acabando
     const fr = pickupFrame(k.kind);
+    const color = PICKUP_TYPES[k.kind]?.color || C.yellow;
     const bob = Math.round(Math.sin(now * 5 + k.id) * 2);
     const x = Math.round(ox + sx);
     const y = Math.round(oy + sy);
-    const sh = shadowSprite(5, 2);
-    this.g.drawImage(sh.c, x - sh.ax, y - sh.ay);
-    this.g.drawImage(fr.canvas, x - fr.ax * 2, y - fr.ay * 2 - 6 + bob, fr.w * 2, fr.h * 2);
+    const pulse = Math.floor(now * 3 + k.id) % 2;
+    const ring = ringSprite(color, 9 + pulse, 4 + pulse);
+    g.drawImage(ring.c, x - ring.ax, y - ring.ay);
+    g.drawImage(fr.canvas, x - fr.ax * 2, y - fr.ay * 2 - 8 + bob, fr.w * 2, fr.h * 2);
   }
 
   // ----- efeitos -----
@@ -348,18 +359,7 @@ export class Renderer {
   drawFx(world, ox, oy, now, q) {
     const g = this.g;
     const fx = world.fx;
-    for (const s of fx.shots) {
-      const t = (now - s.t0) / s.dur;
-      const [x1, y1] = project(s.x1, s.y1);
-      const [x2, y2] = project(s.x2, s.y2);
-      if (s.aoe) {
-        ellipse(g, ox + x1, oy + y1 - 4, Math.round(10 + 34 * t), Math.round(5 + 17 * t), s.color);
-        ellipse(g, ox + x1, oy + y1 - 4, Math.round(8 + 30 * t), Math.round(4 + 15 * t), s.color);
-      } else {
-        line(g, ox + x1, oy + y1 - 16, ox + x2, oy + y2 - 8, s.color, 0, 2);
-        rect(g, C.paper, Math.round(ox + x2) - 1, Math.round(oy + y2 - 8) - 1, 3, 3);
-      }
-    }
+    for (const s of fx.shots) drawShot(this, s, (now - s.t0) / s.dur, ox, oy, now, q);
     if (q.rings) {
       for (const r of fx.rings) {
         const t = (now - r.t0) / r.dur;
@@ -406,6 +406,16 @@ export class Renderer {
     const g = this.g;
     const W = this.W;
     const H = this.H;
+    const fl = world.flashes[0];
+    if (fl && this.quality > 0) {
+      const t = (now - fl.t0) / fl.dur;
+      if (t >= 0 && t < 1) {
+        g.globalAlpha = fl.a * (1 - t);
+        g.fillStyle = fl.color;
+        g.fillRect(0, 0, W, H);
+        g.globalAlpha = 1;
+      }
+    }
     const hurt = now - world.flash;
     if (hurt < 0.3) {
       g.fillStyle = C.red;
@@ -432,7 +442,7 @@ export class Renderer {
       if (t > 0.85 && Math.floor(now * 12) % 2) return;
       const h = b.sub ? 44 : 30;
       const top = Math.round(H * 0.3 - h / 2);
-      g.fillStyle = 'rgba(16,19,27,0.85)';
+      g.fillStyle = 'rgba(11,14,26,0.85)';
       g.fillRect(0, top, W, Math.round(h * slide));
       if (slide > 0.9) {
         this.text(b.text, Math.round(W / 2), top + (b.sub ? 20 : 20), b.color, `16px ${PX}`);

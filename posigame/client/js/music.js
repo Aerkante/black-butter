@@ -1,6 +1,6 @@
 // Sequenciador de música chiptune com WebAudio: pulso 25%/50% (melodia e arpejo), triângulo (baixo),
 // ruído (bateria). Toca em loop; o jogo troca de trilha conforme a situação.
-import { TRACKS, STEPS, midiToHz, bassNote, arpNote } from './music-data.js';
+import { TRACKS, STEPS, midiToHz, bassNote, arpNote, TRACK_META, TRACK_ORDER, POOLS } from './music-data.js';
 import { getCtx, onReady } from './sfx.js';
 
 let enabled = true;
@@ -15,7 +15,15 @@ let master = null;
 let noise = null;
 let pulse25 = null;
 let pulse50 = null;
-let want = { name: null, calm: false };
+let want = { kind: null, calm: false, seed: 0 };
+let choice = 'auto'; // 'auto' ou o id de uma faixa fixada pelo jogador
+try {
+  const saved = localStorage.getItem('pg_track');
+  if (saved && TRACKS[saved]) choice = saved;
+} catch {
+  /* sem armazenamento */
+}
+let listener = null;
 let cur = null;
 let timer = null;
 let nextTime = 0;
@@ -155,29 +163,64 @@ function tick() {
   }
 }
 
+// Faixa que deve tocar agora: a escolhida pelo jogador ou uma do grupo da situação (gira a cada onda)
+function resolve() {
+  if (!want.kind) return null;
+  if (choice !== 'auto') return choice;
+  const pool = POOLS[want.kind];
+  return pool[Math.abs(want.seed) % pool.length];
+}
+
 function apply() {
-  if (!want.name) {
+  const id = resolve();
+  if (!id) {
     cur = null;
     return;
   }
   if (!init()) return;
-  if (cur !== want.name) {
-    cur = want.name;
+  if (cur !== id) {
+    cur = id;
     step = 0;
     barIdx = 0;
     nextTime = ctx.currentTime + 0.08;
+    listener?.(id, TRACK_META[id].name);
   }
   if (!timer) timer = setInterval(tick, 40);
 }
 
-// Pede uma trilha ('menu' | 'battle' | 'boss' | null). calm = só baixo e arpejo (entre ondas).
-export function play(name, { calm = false } = {}) {
-  want = { name, calm };
-  if (!name && timer) {
+// Pede uma situação ('menu' | 'battle' | 'boss' | null). calm = só baixo e arpejo (entre ondas).
+export function play(kind, { calm = false, seed = 0 } = {}) {
+  want = { kind, calm, seed };
+  if (!kind && timer) {
     clearInterval(timer);
     timer = null;
+    cur = null;
   }
   if (getCtx()) apply();
+}
+
+// Troca para a próxima faixa: Automática -> cada faixa -> Automática...
+export function next() {
+  const order = ['auto', ...TRACK_ORDER];
+  choice = order[(order.indexOf(choice) + 1) % order.length];
+  try {
+    localStorage.setItem('pg_track', choice);
+  } catch {
+    /* ignora */
+  }
+  // sem situação ativa (menu inicial sem áudio ainda): a escolha vale na próxima vez
+  if (getCtx() && want.kind) apply();
+  return current();
+}
+
+export function current() {
+  const id = cur || resolve();
+  return { choice, id, name: choice === 'auto' ? 'Automática' : TRACK_META[choice].name, playing: id ? TRACK_META[id].name : null };
+}
+
+// Recebe (id, nome) sempre que a faixa que toca muda
+export function onTrack(fn) {
+  listener = fn;
 }
 
 onReady(() => apply());
