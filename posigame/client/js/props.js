@@ -1,5 +1,5 @@
 // Móveis e objetos do escritório em pixel art isométrica. Cada peça é desenhada uma vez (cache).
-import { SECTORS } from '/shared/game.js';
+import { SECTORS, BAIA_ARM } from '/shared/game.js';
 import { fillPoly, rect, makeCanvas } from './px.js';
 import { HX, HY, K, box, decal, bake, tone, WOOD, DARK, WHITE, NAVY } from './iso.js';
 
@@ -467,8 +467,10 @@ function drawTotem(g, ox, oy, w, d) {
 function drawBaia(g, ox, oy, w, h, p) {
   const accent = SECTORS[p.sector]?.color || K.yellow;
   const H = 9;
-  const A = (w - 1) / 2; // comprimento do braço em x
-  const B = (h - 1) / 2; // comprimento do braço em y
+  const t = BAIA_ARM; // espessura dos braços
+  const A = (w - t) / 2; // comprimento do braço em x
+  const B = (h - t) / 2; // comprimento do braço em y
+  const m = t / 2; // metade da espessura (cada lado da divisória)
   const arm = (u, v, aw, ad) => {
     const o = { u, v, z: 0, w: aw, d: ad, h: H, ...CREAM };
     box(g, ox, oy, o);
@@ -476,36 +478,35 @@ function drawBaia(g, ox, oy, w, h, p) {
     decal(g, ox, oy, o, 'R', 0.03, 0.97, 1, 6, '#d8c58c');
     return o;
   };
-  arm(A, 0, 1, B); // braço de trás
-  arm(0, B, A, 1); // braço da esquerda
-  const hub = arm(A, B, 1, 1);
-  decal(g, ox, oy, hub, 'T', 0.2, 0.8, 0.2, 0.8, accent); // placa do setor no centro
-  arm(A + 1, B, A, 1); // braço da direita
-  arm(A, B + 1, 1, B); // braço da frente
+  arm(A, 0, t, B); // braço de trás
+  arm(0, B, A, t); // braço da esquerda
+  const hub = arm(A, B, t, t);
+  decal(g, ox, oy, hub, 'T', 0.25, 0.75, 0.25, 0.75, accent); // placa do setor no centro
+  arm(A + t, B, A, t); // braço da direita
+  arm(A, B + t, t, B); // braço da frente
   // divisórias pretas (baixas) no eixo de cada barra
   const div = { z: H, h: 3, ...BLACK };
-  box(g, ox, oy, { u: A + 0.46, v: 0, w: 0.08, d: B, ...div });
-  box(g, ox, oy, { u: 0, v: B + 0.46, w: A, d: 0.08, ...div });
-  box(g, ox, oy, { u: A + 0.46, v: B + 1, w: 0.08, d: B, ...div });
-  box(g, ox, oy, { u: A + 1, v: B + 0.46, w: A, d: 0.08, ...div });
-  box(g, ox, oy, { u: A + 0.46, v: B, w: 0.08, d: 1, ...div });
-  const kinds = SCREENS.slice();
-  const pick = (i) => kinds[(i + (p.sector ? p.sector.length : 0)) % kinds.length];
-  // lugar de cima-esquerda: monitor no braço de trás, notebook no braço da esquerda
-  monitor(g, ox, oy, A + 0.02, B - 0.9, H, 'L', pick(0));
-  laptop(g, ox, oy, A - 0.95, B + 0.06, H, 'R', pick(1));
+  box(g, ox, oy, { u: A + m - 0.04, v: 0, w: 0.08, d: B, ...div });
+  box(g, ox, oy, { u: 0, v: B + m - 0.04, w: A, d: 0.08, ...div });
+  box(g, ox, oy, { u: A + m - 0.04, v: B + t, w: 0.08, d: B, ...div });
+  box(g, ox, oy, { u: A + t, v: B + m - 0.04, w: A, d: 0.08, ...div });
+  box(g, ox, oy, { u: A + m - 0.04, v: B, w: 0.08, d: t, ...div });
+  const pick = (i) => SCREENS[(i + (p.sector ? p.sector.length : 0)) % SCREENS.length];
+  // cima-esquerda: monitor no braço de trás, notebook no braço da esquerda
+  monitor(g, ox, oy, A + 0.25, B - 1.0, H, 'L', pick(0));
+  laptop(g, ox, oy, A - 1.1, B + 0.35, H, 'R', pick(1));
   // cima-direita: monitor no braço da direita, notebook no braço de trás
-  monitor(g, ox, oy, A + 1.9, B + 0.02, H, 'R', pick(2));
-  laptop(g, ox, oy, A + 0.55, B - 0.85, H, 'L', pick(3));
+  monitor(g, ox, oy, A + t + 0.8, B + 0.25, H, 'R', pick(2));
+  laptop(g, ox, oy, A + m + 0.35, B - 0.95, H, 'L', pick(3));
   // baixo-direita: monitor no braço da frente, notebook no braço da direita
-  monitor(g, ox, oy, A + 0.52, B + 1.9, H, 'L', pick(4));
-  laptop(g, ox, oy, A + 1.5, B + 0.55, H, 'R', pick(5));
+  monitor(g, ox, oy, A + m + 0.25, B + t + 0.9, H, 'L', pick(4));
+  laptop(g, ox, oy, A + t + 0.7, B + m + 0.35, H, 'R', pick(5));
   // baixo-esquerda: monitor no braço da esquerda, notebook no braço da frente
-  monitor(g, ox, oy, A - 0.9, B + 0.52, H, 'R', pick(6));
-  laptop(g, ox, oy, A + 0.05, B + 1.5, H, 'L', pick(7));
+  monitor(g, ox, oy, A - 1.0, B + m + 0.25, H, 'R', pick(6));
+  laptop(g, ox, oy, A + 0.3, B + t + 0.7, H, 'L', pick(7));
   // caneca e post-its
-  box(g, ox, oy, { u: A + 0.15, v: B + 0.15, z: H, w: 0.16, d: 0.16, h: 4, ...WHITE });
-  box(g, ox, oy, { u: A - 0.5, v: B + 0.6, z: H, w: 0.14, d: 0.14, h: 1, ...tone(K.yellow, '#c9a10f', '#e6be1a') });
+  box(g, ox, oy, { u: A + 0.25, v: B + 0.25, z: H, w: 0.16, d: 0.16, h: 4, ...WHITE });
+  box(g, ox, oy, { u: A + t - 0.5, v: B + t - 0.5, z: H, w: 0.14, d: 0.14, h: 1, ...tone(K.yellow, '#c9a10f', '#e6be1a') });
 }
 
 // ----- tabela de tipos -----

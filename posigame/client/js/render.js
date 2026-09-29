@@ -300,11 +300,11 @@ export class Renderer {
       // travesseirinho e coberta
       const fx = p.face < 0 ? -1 : 1;
       g.fillStyle = '#0b0e1a';
-      g.fillRect(x + fx * 9 - 8, y - 9, 16, 11);
+      g.fillRect(x + fx * 14 - 8, y - 12, 16, 15);
       g.fillStyle = '#fff6e0';
-      g.fillRect(x + fx * 9 - 7, y - 8, 14, 9);
+      g.fillRect(x + fx * 14 - 7, y - 11, 14, 12);
       g.fillStyle = '#d6c08a';
-      g.fillRect(x + fx * 9 - 7, y - 1, 14, 2);
+      g.fillRect(x + fx * 14 - 7, y - 1, 14, 2);
     }
     if (p.look) {
       const invBlink = p.flags & 2 && Math.floor(now * 8) % 2 === 0;
@@ -315,7 +315,7 @@ export class Renderer {
         const dw = fr.w * S;
         const dh = fr.h * S;
         const dx = -fr.ax * S;
-        const dy = -fr.ay * S + (pose === 'down' || pose === 'sleep' ? 8 : 0);
+        const dy = -fr.ay * S + (pose === 'down' ? 8 : pose === 'sleep' ? 4 : 0);
         if (p.flags & 64 && p.moving && q.bursts) {
           // velocidade: cópias esmaecidas ficam para trás
           for (let i = 3; i >= 1; i--) {

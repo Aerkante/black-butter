@@ -37,7 +37,7 @@ test('cada mesa do salão pertence a um setor e todos os setores estão no mapa'
   const cad = baias.find((b) => b.sector === 'cadastro');
   assert.ok(cad.w > cad.h * 2, 'Cadastro é a baia larga');
   // coluna da direita, de cima para baixo: secretária, projetos, desenvolvimento, financeiro
-  const col = [...desks, ...baias].filter((d) => d.x > 22.5).sort((a, b) => a.y - b.y).map((d) => d.sector);
+  const col = [...desks, ...baias].filter((d) => d.x > 28).sort((a, b) => a.y - b.y).map((d) => d.sector);
   assert.deepEqual(col, ['secretaria', 'projetos', 'desenvolvimento', 'financeiro']);
   // nenhuma baia dentro de uma sala
   for (const b of baias) assert.equal(MAP.rooms.some((r) => b.x >= r.x && b.x < r.x + r.w && b.y >= r.y && b.y < r.y + r.h), false);
@@ -47,18 +47,18 @@ test('sala de componentes: U de mesas, mesa redonda com 3 cadeiras, sem armário
   const inRoom = (id) => MAP.props.filter((p) => { const r = MAP.rooms.find((x) => x.id === id); return p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h; });
   const copa = inRoom('copa');
   const longTable = copa.find((p) => p.t === 'tableLong');
-  assert.ok(longTable && longTable.y > 40, 'mesa na parte de baixo da copa');
+  assert.ok(longTable && longTable.y > 52, 'mesa na parte de baixo da copa');
   const comp = inRoom('componentes');
   assert.equal(comp.filter((p) => p.t === 'workbench').length, 3, 'três mesas de componentes');
   assert.equal(comp.filter((p) => p.t === 'roundtable').length, 1);
   assert.equal(comp.filter((p) => p.t === 'chair').length, 3, 'só as cadeiras da mesa redonda');
   assert.ok(!comp.some((p) => /^rack|^locker/.test(p.t)), 'sem armários');
   const totem = MAP.props.find((p) => p.t === 'totem');
-  const wall = MAP.walls.find((w) => totem.x >= w.x && totem.x <= w.x + w.w && Math.abs(totem.y - (w.y + w.h)) < 0.05);
+  const wall = MAP.walls.find((w) => w.h > w.w && Math.abs(totem.x - (w.x + w.w)) < 0.05 && totem.y >= w.y && totem.y <= w.y + w.h);
   assert.ok(wall, 'totem encostado numa parede');
-  assert.ok(totem.w < 1 && totem.h < 0.5, 'só uma caixinha');
+  assert.ok(Math.max(totem.w, totem.h) < 1 && Math.min(totem.w, totem.h) < 0.5, 'só uma caixinha');
   const fin = MAP.props.find((p) => p.sector === 'financeiro');
-  assert.ok(Math.hypot(totem.x - (fin.x + fin.w / 2), totem.y - (fin.y + fin.h / 2)) < 12, 'perto do Financeiro');
+  assert.ok(MAP.rooms.find((r) => r.id === 'copa').x + 13 >= totem.x - 0.3, 'na parede da copa');
 });
 
 test('sala do diretor é simples', () => {

@@ -179,6 +179,10 @@ export function characterFrame(look, poseName) {
     h = CW;
   }
   f = { canvas: out, w, h, ax: PAD_X + 4, ay: PAD_T + 16 }; // âncora: pés
+  if (pose.sleep) {
+    f.ax = CH / 2; // deitado: âncora no centro do corpo, encostado no chão
+    f.ay = PAD_X + 8;
+  }
   cache.set(key, f);
   if (cache.size > 900) cache.delete(cache.keys().next().value);
   return f;

@@ -259,21 +259,21 @@ test('jogador não atravessa obstáculos nem sai do mapa', () => {
   const a = add(m, 'Ana');
   m.state = 'break';
   m.stateT = 999;
-  a.x = 2.5;
-  a.y = 12.6; // canto da baia de Fiscal (braço vertical em x 2.9..3.9)
+  a.x = 2.3;
+  a.y = 14.2; // canto da baia de Fiscal (braço vertical em x 3.4..5.3)
   m.input(a, { dx: 1, dy: 0 });
   run(m, 3);
-  assert.ok(a.x < 2.7, 'parou no braço da baia');
+  assert.ok(a.x < 3.2, 'parou no braço da baia');
   a.x = 1;
   a.y = 1;
   m.input(a, { dx: -1, dy: -1 });
   run(m, 3);
   assert.ok(a.x >= 0 && a.y >= 0 && a.x <= MAP.w && a.y <= MAP.h);
-  a.x = 4;
-  a.y = 6;
+  a.x = 2;
+  a.y = 9;
   m.input(a, { dx: 0, dy: 1 });
   run(m, 3);
-  assert.ok(a.y < 6.8, 'não atravessa a divisória da sala (y = 7), só pela porta');
+  assert.ok(a.y < 9.8, 'não atravessa a divisória da sala (y = 10), só pela porta');
 });
 
 test('snapshot é compacto e traz o estado pessoal', () => {
@@ -293,14 +293,14 @@ test('chefe atravessa a porta da copa e chega ao servidor (navegação por porta
   m.state = 'wave';
   m.wave = 5;
   m.queue = ['bug']; // impede o fim da onda
-  const boss = m.makeEnemy('boss', 6, 38, 0); // dentro da copa
+  const boss = m.makeEnemy('boss', 6, 51, 0); // dentro da copa
   boss.hp = boss.maxHp = 99999;
   run(m, 60, () => {
     a.hp = a.maxHp;
     m.server.hp = m.server.max;
   });
-  const d = Math.hypot(boss.x - 20, boss.y - 25);
-  assert.ok(d < 4, `chefe saiu da copa e chegou perto do servidor (distância ${d.toFixed(1)})`);
+  const d = Math.hypot(boss.x - a.x, boss.y - a.y);
+  assert.ok(d < 3, `chefe saiu da copa e alcançou o jogador no salão (distância ${d.toFixed(1)})`);
 });
 
 test('bugs contornam a parede e entram pela porta atrás do jogador', () => {
@@ -309,10 +309,10 @@ test('bugs contornam a parede e entram pela porta atrás do jogador', () => {
   m.state = 'wave';
   m.wave = 2;
   m.queue = ['bug'];
-  a.x = 4;
-  a.y = 5.5; // dentro da sala de reunião (porta em x 5.5..7.5, y = 7)
+  a.x = 2;
+  a.y = 8.5; // dentro da sala de reunião (porta em x 4.5..6.5, y = 10)
   a.invuln = m.t + 999;
-  const e = m.makeEnemy('bug', 4, 8.2, 0); // logo do outro lado da divisória
+  const e = m.makeEnemy('bug', 2, 11, 0); // logo do outro lado da divisória
   e.hp = e.maxHp = 99999;
   e.tauntBy = a.id; // provocado (Grito do Tank): tem de ir até o jogador, dando a volta
   e.tauntUntil = m.t + 999;
@@ -328,17 +328,17 @@ test('jogador atrás da parede não leva dano de bug do outro lado', () => {
   m.state = 'wave';
   m.wave = 2;
   m.queue = ['bug'];
-  a.x = 4;
-  a.y = 6.4;
+  a.x = 2;
+  a.y = 9.4;
   a.invuln = 0;
   a.hp = a.maxHp;
-  const e = m.makeEnemy('bug', 4, 7.7, 0); // colado na divisória, do outro lado
+  const e = m.makeEnemy('bug', 2, 10.7, 0); // colado na divisória, do outro lado
   e.hp = e.maxHp = 99999;
   e.atkT = 0;
   for (let i = 0; i < 20; i++) {
     m.update(TICK_DT);
-    a.x = 4;
-    a.y = 6.4; // jogador parado
+    a.x = 2;
+    a.y = 9.4; // jogador parado
   }
   assert.equal(a.hp, a.maxHp, 'a parede protege enquanto o bug não chega pela porta');
 });
@@ -350,7 +350,7 @@ test('todos os portais têm caminho até o servidor e nenhum móvel tranca as sa
   for (const r of ['reuniao', 'seguranca', 'componentes', 'copa']) {
     const room = MAP.rooms.find((x) => x.id === r);
     // porta de cada sala: um ponto livre logo dentro da sala, ao lado da porta
-    const probes = { reuniao: [6.5, 6.2], seguranca: [10.2, 31.5], componentes: [10.2, 24.5], copa: [12.5, 34.8] };
+    const probes = { reuniao: [5.5, 9.2], seguranca: [9.8, 44.5], componentes: [9.8, 37.5], copa: [11.5, 48.2] };
     const [x, y] = probes[r];
     assert.ok(nav.reachable(field, x, y), `sala ${room.name} acessível`);
   }
