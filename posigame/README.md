@@ -101,6 +101,19 @@ O visual se adapta ao desempenho, sem mudar as regras do jogo (bugs, vida e dano
 Com "Auto" (padrão), o jogo desce de nível se o FPS cair e sobe de volta se estabilizar. Também dá para fixar o nível no menu.
 O cenário é pré-renderizado uma vez, os sprites são desenhados por código e cacheados, e há um teto fixo de 36 bugs vivos.
 
+### Nitidez
+
+O jogo desenha numa resolução lógica pequena e a amplia por um fator **inteiro** (cada pixel lógico vira NxN pixels do
+aparelho, considerando a densidade da tela), então a imagem não borra. Polígonos, linhas e elipses são rasterizados
+pixel a pixel (`client/js/px.js`), sem suavização, e todos os sprites recebem contorno e sombreamento automáticos.
+
+## Música e sons
+
+Trilhas em chiptune geradas em tempo real com WebAudio (pulso 25%/50%, triângulo e ruído), sem arquivos de áudio:
+menu (calma), combate (mais calma entre ondas) e chefe (mais rápida). As partituras estão em
+`client/js/music-data.js`. Há botões separados para música e efeitos (no menu e na partida). O navegador só libera o
+áudio depois do primeiro toque ou tecla.
+
 ## Administração (no código)
 
 - **Nicks bloqueados / reservados e limites:** edite `server/config.js`.
