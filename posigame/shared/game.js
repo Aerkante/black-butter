@@ -159,7 +159,7 @@ export const CLASSES = {
     atk: { range: 6, dmg: 5, cd: 0.6 },
     skills: [
       { name: 'Priorizar', short: 'PRIO', cd: 6, desc: 'Marca 1 bug: +50% de dano e pontos x2.' },
-      { name: 'Mudança de escopo', short: 'ESCOPO', cd: 15, desc: 'Efeito aleatório: bom, ruim ou caos.' },
+      { name: 'Mudança de escopo', short: 'SCOPE', cd: 15, desc: 'Efeito aleatório: bom, ruim ou caos.' },
       { name: 'Sprint Review', short: 'ULT', cd: 60, desc: 'Congela os bugs e paga o combo em pontos.' },
     ],
   },

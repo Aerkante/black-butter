@@ -172,3 +172,5 @@ body.playing #rotate.on { display: flex; }
   #touch { width: 200px; height: 190px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+.hud-btns { display: flex; gap: 6px; }

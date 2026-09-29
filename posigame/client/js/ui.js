@@ -17,6 +17,7 @@ import {
 } from '/shared/look.js';
 import { characterFrame } from './sprites.js';
 import { sfx, isMuted, setMuted } from './sfx.js';
+import * as music from './music.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -145,6 +146,14 @@ export class UI {
       sfx.click();
     });
     paint();
+    const mus = $('opt-music');
+    const paintMus = () => (mus.textContent = music.isEnabled() ? 'MÚSICA: ON' : 'MÚSICA: OFF');
+    mus.addEventListener('click', () => {
+      music.setEnabled(!music.isEnabled());
+      paintMus();
+      sfx.click();
+    });
+    paintMus();
     // classes
     const list = $('class-list');
     for (const id of CLASS_IDS) {
@@ -354,6 +363,13 @@ export class UI {
       sfx.click();
       this.cb.onLeave();
     });
+    const mb = $('btn-music');
+    const paint = () => (mb.textContent = music.isEnabled() ? 'MÚS: ON' : 'MÚS: OFF');
+    mb.addEventListener('click', () => {
+      music.setEnabled(!music.isEnabled());
+      paint();
+    });
+    paint();
   }
 
   setupSkills() {

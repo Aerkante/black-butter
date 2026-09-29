@@ -7,13 +7,20 @@ try {
   /* sem armazenamento */
 }
 
+const readyCallbacks = [];
+export const getCtx = () => ctx;
+export const onReady = (fn) => readyCallbacks.push(fn);
+
 export function unlock() {
   if (ctx) {
     if (ctx.state === 'suspended') ctx.resume();
     return;
   }
   const AC = window.AudioContext || window.webkitAudioContext;
-  if (AC) ctx = new AC();
+  if (AC) {
+    ctx = new AC();
+    for (const fn of readyCallbacks) fn();
+  }
 }
 
 export const isMuted = () => muted;

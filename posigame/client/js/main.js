@@ -5,6 +5,7 @@ import { Renderer, QUALITY } from './render.js';
 import { Input } from './input.js';
 import { UI } from './ui.js';
 import { unlock } from './sfx.js';
+import * as music from './music.js';
 import { randomLook } from '/shared/look.js';
 
 const $ = (id) => document.getElementById(id);
@@ -122,6 +123,7 @@ const ui = new UI({
 });
 
 function goHome() {
+  music.play('menu');
   phase = 'home';
   over = false;
   input.enabled = false;
@@ -138,6 +140,7 @@ net.on('close', ({ wasConnected }) => {
   else if (phase !== 'boot') ui.toast('Conexão perdida. Reconectando...', 60000);
 });
 net.on('need_nick', () => {
+  music.play('menu');
   phase = 'nick';
   ui.showNick();
 });
@@ -174,6 +177,8 @@ net.on('roster', (msg) => world.setRoster(msg.players));
 net.on('s', (snap) => {
   if (phase !== 'game') return;
   world.pushSnap(snap, performance.now() / 1000);
+  if (snap.st === 2) music.play(null);
+  else music.play(snap.e.some((e) => e[1] === 5 && !(e[6] & 1)) ? 'boss' : 'battle', { calm: snap.st === 0 });
   ui.updateHud(world, snap, { rtt: net.rtt, fps: perf.fps, q: QUALITY[renderer.quality].name });
   if (snap.st === 2 && snap.over) {
     over = true;
